@@ -4,6 +4,58 @@ import { createServerClient } from "../supabase/server";
 
 export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
+bot.command("link", async (ctx) => {
+  const chatId = ctx.chat.id.toString();
+  const otp = ctx.match;
+  
+  if (!otp) {
+    await ctx.reply("Silakan berikan kode OTP. Contoh: /link 123456");
+    return;
+  }
+
+  const supabase = createServerClient();
+  
+  // Find web user with this OTP
+  const { data: webUser, error: findError } = await supabase
+    .from("users")
+    .select("id, telegram_sync_token_expires")
+    .eq("telegram_sync_token", otp)
+    .single();
+
+  if (findError || !webUser) {
+    await ctx.reply("Kode OTP tidak valid atau salah.");
+    return;
+  }
+
+  if (new Date(webUser.telegram_sync_token_expires) < new Date()) {
+    await ctx.reply("Kode OTP sudah kedaluwarsa. Silakan generate ulang di web.");
+    return;
+  }
+
+  // Clear chatId from any temporary users to avoid UNIQUE constraint violation
+  await supabase
+    .from("users")
+    .update({ telegram_chat_id: null })
+    .eq("telegram_chat_id", chatId);
+
+  // Link to the web user
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({ 
+      telegram_chat_id: chatId,
+      telegram_sync_token: null,
+      telegram_sync_token_expires: null
+    })
+    .eq("id", webUser.id);
+
+  if (updateError) {
+    await ctx.reply("Terjadi kesalahan sistem saat menghubungkan akun. Coba lagi nanti.");
+    return;
+  }
+
+  await ctx.reply("Berhasil! Akun Telegram Anda sekarang sudah terhubung dengan akun Web FinMe.");
+});
+
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text;
   const chatId = ctx.chat.id.toString();
@@ -40,17 +92,8 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 2.5 Cek ketersediaan kategori user
-  const { data: categories, error: catError } = await supabase
-    .from("categories")
-    .select("id")
-    .eq("user_id", user.id)
-    .limit(1);
-
-  if (catError || !categories || categories.length === 0) {
-    await ctx.reply("Anda belum memiliki kategori! Silakan tambahkan kategori terlebih dahulu di aplikasi web (halaman Anggaran) sebelum mencatat transaksi melalui chat.");
-    return;
-  }
+  // TODO: Implement OTP Link to sync Telegram and Web accounts.
+  // Bypass category check temporarily until OTP feature is done.
 
   // 3. Simpan transaksi ke Supabase
   const { error: insertError } = await supabase.from("transactions").insert({

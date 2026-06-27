@@ -65,28 +65,31 @@ export default function Dashboard() {
   const { lineChartData, donutData, categoryColors } = useMemo(() => {
     if (!transactions.length) return { lineChartData: [], donutData: [], categoryColors: {} };
 
-    // Line Chart: Expense last 30 days
+    // Line Chart: Expense and Income last 30 days
     const last30Days = new Date();
     last30Days.setDate(last30Days.getDate() - 30);
     
-    const expenses30d = transactions.filter(t => t.type === 'expense' && new Date(t.created_at) >= last30Days);
-    const dailyMap: Record<string, number> = {};
-    expenses30d.forEach(t => {
+    const tx30d = transactions.filter(t => new Date(t.created_at) >= last30Days);
+    const dailyMap: Record<string, { expense: number, income: number }> = {};
+    tx30d.forEach(t => {
       const date = new Date(t.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-      dailyMap[date] = (dailyMap[date] || 0) + t.amount;
+      if (!dailyMap[date]) dailyMap[date] = { expense: 0, income: 0 };
+      if (t.type === 'expense') dailyMap[date].expense += t.amount;
+      else if (t.type === 'income') dailyMap[date].income += t.amount;
     });
     
     const lineChartData = Object.keys(dailyMap).reverse().map(date => ({
       name: date,
-      value: dailyMap[date]
+      expense: dailyMap[date].expense,
+      income: dailyMap[date].income
     }));
 
-    // Donut Chart: Expense by Category this month
+    // Donut Chart: Expense and Income by Category this month
     const thisMonth = new Date().getMonth();
-    const expensesThisMonth = transactions.filter(t => t.type === 'expense' && new Date(t.created_at).getMonth() === thisMonth);
+    const txThisMonth = transactions.filter(t => new Date(t.created_at).getMonth() === thisMonth);
     
     const catMap: Record<string, number> = {};
-    expensesThisMonth.forEach(t => {
+    txThisMonth.forEach(t => {
       catMap[t.category] = (catMap[t.category] || 0) + t.amount;
     });
 
@@ -130,10 +133,6 @@ export default function Dashboard() {
           <p className="text-[13px] text-text-secondary mt-0.5">Juni 2026 &middot; Ringkasan keuangan bulan berjalan</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <button className={btnGhost} type="button" aria-label="Ekspor laporan PDF">
-            <DownloadIcon className="w-4 h-4" aria-hidden="true" />
-            Ekspor PDF
-          </button>
           <button className={btnPrimary} type="button" onClick={() => setIsModalOpen(true)}>
             <PlusIcon className="w-4 h-4" aria-hidden="true" />
             Tambah Manual
@@ -171,10 +170,10 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6" aria-label="Grafik analitik">
         <article className={cardClass}>
           <div className="flex items-center justify-between mb-5">
-            <div><div className="text-[15px] font-semibold">Tren Pengeluaran Harian</div><div className="text-[12px] text-text-tertiary font-normal">30 hari terakhir</div></div>
+            <div><div className="text-[15px] font-semibold">Tren Transaksi Harian</div><div className="text-[12px] text-text-tertiary font-normal">30 hari terakhir</div></div>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary">Line Chart</span>
           </div>
-          <div className="w-full h-[200px]" role="img" aria-label="Grafik garis tren pengeluaran harian">
+          <div className="w-full h-[200px]" role="img" aria-label="Grafik garis tren transaksi harian">
             {lineChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineChartData} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
@@ -182,19 +181,20 @@ export default function Dashboard() {
                   <RechartsTooltip 
                     contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '12px' }}
                     itemStyle={{ color: 'var(--color-text-primary)' }}
-                    formatter={(val: any) => [formatRp(Number(val)), "Pengeluaran"]}
+                    formatter={(val: any, name: any) => [formatRp(Number(val)), String(name) === 'expense' ? "Pengeluaran" : "Pemasukan"]}
                   />
-                  <Line type="monotone" dataKey="value" stroke="#FF6B00" strokeWidth={2} dot={{ r: 3, fill: "#FF6B00", strokeWidth: 2, stroke: "var(--color-surface)" }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="expense" name="expense" stroke="#FF6B00" strokeWidth={2} dot={{ r: 3, fill: "#FF6B00", strokeWidth: 2, stroke: "var(--color-surface)" }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="income" name="income" stroke="#16A34A" strokeWidth={2} dot={{ r: 3, fill: "#16A34A", strokeWidth: 2, stroke: "var(--color-surface)" }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-[12px] text-text-tertiary">Belum ada data pengeluaran</div>
+              <div className="w-full h-full flex items-center justify-center text-[12px] text-text-tertiary">Belum ada data transaksi</div>
             )}
           </div>
         </article>
         <article className={cardClass}>
           <div className="flex items-center justify-between mb-5">
-            <div><div className="text-[15px] font-semibold">Distribusi Kategori</div><div className="text-[12px] text-text-tertiary font-normal">Pengeluaran bulan ini</div></div>
+            <div><div className="text-[15px] font-semibold">Distribusi Kategori</div><div className="text-[12px] text-text-tertiary font-normal">Transaksi bulan ini</div></div>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary">Donut Chart</span>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-6">

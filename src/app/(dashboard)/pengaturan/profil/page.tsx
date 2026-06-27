@@ -64,11 +64,6 @@ export default function ProfilPengaturan() {
                       Edit
                     </button>
                   </div>
-                  <div className={formGroupClass}>
-                    <label className={formLabelClass} htmlFor="telegram">Telegram Chat ID</label>
-                    <input type="text" id="telegram" className={formInputReadOnlyClass} defaultValue={user.telegram_chat_id || "Belum terhubung"} readOnly />
-                    <p className="text-[11px] text-text-tertiary mt-1">Digunakan untuk integrasi Bot Telegram.</p>
-                  </div>
                 </>
               ) : (
                 <div className="text-[13px] text-text-tertiary">Data profil tidak ditemukan.</div>

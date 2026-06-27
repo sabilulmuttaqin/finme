@@ -107,7 +107,6 @@ export default function AddCategoryModal({ isOpen, onClose, initialData }: { isO
               >
                 <option value="expense">Pengeluaran</option>
                 <option value="income">Pemasukan</option>
-                <option value="all">Semua</option>
               </select>
             </div>
             <div className={formGroupClass}>
