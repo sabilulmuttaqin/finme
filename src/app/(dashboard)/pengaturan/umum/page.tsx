@@ -24,7 +24,12 @@ export default function UmumPengaturan() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
         const { data } = await supabase.from('users').select('*').eq('id', authUser.id).single();
-        if (data) setUser(data);
+        if (data) {
+          setUser(data);
+          if (data.telegram_sync_token && data.telegram_sync_token_expires && new Date(data.telegram_sync_token_expires) > new Date()) {
+            setOtpCode(data.telegram_sync_token);
+          }
+        }
       }
       setIsLoading(false);
     };
@@ -153,6 +158,24 @@ export default function UmumPengaturan() {
                     <PowerIcon aria-hidden="true" />
                     Putuskan
                   </button>
+                ) : otpCode ? (
+                  <div className="flex flex-col gap-3 w-full bg-surface-secondary border border-border rounded-lg p-4 mt-2">
+                    <p className="text-[13px] text-text-secondary">
+                      Kode OTP Anda: <strong className="text-[16px] font-mono text-text-primary ml-1 tracking-widest">{otpCode}</strong>
+                    </p>
+                    <p className="text-[12px] text-text-tertiary">
+                      Kirim pesan <code className="bg-surface px-1.5 py-0.5 rounded border border-border text-primary font-mono">/link {otpCode}</code> ke bot Telegram. Berlaku 10 menit.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <a href={`https://t.me/@trackinguangsab_bot?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass}>
+                        <MessageIcon className="w-4 h-4" />
+                        Pergi ke Telegram
+                      </a>
+                      <button className={btnGhostClass} type="button" onClick={generateOTP}>
+                        Buat Kode Baru
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <button className={btnPrimaryClass} type="button" onClick={generateOTP}>
                     <CheckCircleIcon aria-hidden="true" />
@@ -242,7 +265,7 @@ export default function UmumPengaturan() {
                 Penting: Jangan tutup halaman ini sebelum Anda mengirim pesan ke bot. Kode ini hanya berlaku 10 menit.
               </p>
               <div className="flex flex-col gap-3 w-full">
-                <a href={`https://t.me/NAMA_BOT_ANDA?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass} onClick={() => setShowOtpModal(false)}>
+                <a href={`https://t.me/@trackinguangsab_bot?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass} onClick={() => setShowOtpModal(false)}>
                   <MessageIcon className="w-4 h-4" />
                   Lanjut ke Telegram
                 </a>
