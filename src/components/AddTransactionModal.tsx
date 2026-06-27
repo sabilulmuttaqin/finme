@@ -8,7 +8,6 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
   const inputRef = useRef<HTMLInputElement>(null);
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
-  const [type, setType] = useState("expense");
   const [category, setCategory] = useState("");
   const [categories, setCategories] = useState<{name: string, type: string}[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -25,15 +24,13 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
     if (isOpen) {
       setDesc("");
       setAmount("");
-      setType("expense");
       setCategory("");
       
       const fetchCategories = async () => {
         const { data } = await supabase.from('categories').select('name, type');
         if (data && data.length > 0) {
           setCategories(data);
-          const first = data.find(c => c.type === 'expense' || c.type === 'all');
-          if (first) setCategory(first.name);
+          if (data.length > 0) setCategory(data[0].name);
         }
       };
       
@@ -43,8 +40,6 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
       }
     }
   }, [isOpen]);
-
-  const filteredCategories = categories.filter(c => c.type === type || c.type === 'all');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +52,7 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
         user_id: user.id,
         description: desc,
         amount: Number(amount),
-        type,
+        type: categories.find(c => c.name === category)?.type || "expense",
         category: category || "lainnya",
         is_manual_web: true
       }]);
@@ -98,32 +93,28 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
               <label className={formLabelClass} htmlFor="modal-amount">Nominal <span className="text-danger" aria-label="wajib diisi">*</span></label>
               <input className={formInputClass} type="number" id="modal-amount" placeholder="50000" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} required />
             </div>
-            <div className={formGroupClass}>
-              <label className={formLabelClass} htmlFor="modal-type">Tipe</label>
-              <select className={selectClass} id="modal-type" value={type} onChange={(e) => {
-                setType(e.target.value);
-                const newFirst = categories.find(c => c.type === e.target.value || c.type === 'all');
-                if (newFirst) setCategory(newFirst.name);
-              }}>
-                <option value="expense">Pengeluaran</option>
-                <option value="income">Pemasukan</option>
-              </select>
-            </div>
-            <div className={formGroupClass}>
+            <div className={`${formGroupClass} col-span-full`}>
               <label className={formLabelClass} htmlFor="modal-category">Kategori</label>
-              <select className={selectClass} id="modal-category" value={category} onChange={(e) => setCategory(e.target.value)}>
-                {filteredCategories.length > 0 ? filteredCategories.map(c => (
-                  <option key={c.name} value={c.name} className="capitalize">{c.name}</option>
+              <select className={selectClass} id="modal-category" value={category} onChange={(e) => setCategory(e.target.value)} disabled={categories.length === 0}>
+                {categories.length > 0 ? categories.map(c => (
+                  <option key={c.name} value={c.name} className="capitalize">{c.name} - {c.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</option>
                 )) : (
-                  <option value="lainnya">Lainnya</option>
+                  <option value="">Tidak ada kategori</option>
                 )}
               </select>
             </div>
-            <div className="col-span-full flex justify-end gap-2 mt-1">
-              <button className={`${btnClass} bg-surface border border-border text-text-secondary hover:bg-surface-secondary hover:text-text-primary`} type="button" onClick={() => onClose()} disabled={isSaving}>Batal</button>
-              <button className={`${btnClass} bg-primary text-white border-none hover:bg-primary-dark`} type="submit" disabled={isSaving}>
-                {isSaving ? "Menyimpan..." : "Simpan"}
-              </button>
+            <div className="col-span-full flex flex-col gap-2 mt-1">
+              {categories.length === 0 && (
+                <div className="text-[12px] text-danger bg-danger-surface px-3 py-2 rounded-sm border border-danger/20">
+                  Anda belum memiliki kategori. Silakan buat kategori di halaman Anggaran terlebih dahulu.
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button className={`${btnClass} bg-surface border border-border text-text-secondary hover:bg-surface-secondary hover:text-text-primary`} type="button" onClick={() => onClose()} disabled={isSaving}>Batal</button>
+                <button className={`${btnClass} bg-primary text-white border-none hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed`} type="submit" disabled={isSaving || categories.length === 0}>
+                  {isSaving ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
             </div>
           </form>
         </div>

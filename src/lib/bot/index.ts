@@ -40,6 +40,18 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
+  // 2.5 Cek ketersediaan kategori user
+  const { data: categories, error: catError } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("user_id", user.id)
+    .limit(1);
+
+  if (catError || !categories || categories.length === 0) {
+    await ctx.reply("Anda belum memiliki kategori! Silakan tambahkan kategori terlebih dahulu di aplikasi web (halaman Anggaran) sebelum mencatat transaksi melalui chat.");
+    return;
+  }
+
   // 3. Simpan transaksi ke Supabase
   const { error: insertError } = await supabase.from("transactions").insert({
     user_id: user.id,

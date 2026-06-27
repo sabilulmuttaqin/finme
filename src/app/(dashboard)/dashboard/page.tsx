@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { DownloadIcon, PlusIcon, WalletIcon, TrendingUpIcon, ArrowUpIcon, TrendingDownIcon, ArrowDownIcon, StarIcon, SettingsIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon } from "@/components/icons";
+import Toast from "@/components/Toast";
 import { createClient } from "@/lib/supabase/client";
 import { LineChart, Line, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
@@ -14,10 +15,15 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [budgets, setBudgets] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
   const supabase = createClient();
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchData = useCallback(async () => {
       const [txRes, bdgRes] = await Promise.all([
         supabase.from('transactions').select('*').order('created_at', { ascending: false }),
         supabase.from('budgets').select('category, limit_amount')
@@ -30,8 +36,9 @@ export default function Dashboard() {
         setBudgets(bdgMap);
       }
       setIsLoading(false);
-    };
+    }, [supabase]);
 
+  useEffect(() => {
     fetchData();
 
     const channel = supabase
@@ -47,7 +54,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [supabase, fetchData]);
 
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
@@ -319,7 +326,15 @@ export default function Dashboard() {
         </article>
       </section>
       
-      <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddTransactionModal isOpen={isModalOpen} onClose={(msg) => {
+        setIsModalOpen(false);
+        if (msg) {
+          showToast(msg);
+          fetchData();
+        }
+      }} />
+
+      {toast && <Toast message={toast} />}
     </main>
   );
 }
