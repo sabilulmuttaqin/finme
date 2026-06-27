@@ -1,14 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { PlusIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, TrendingUpIcon, EditIcon, TrashIcon, LaptopIcon } from "@/components/icons";
+import { PlusIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, TrendingUpIcon, EditIcon, TrashIcon, LaptopIcon, WarningIcon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 
 const AddCategoryModal = dynamic(() => import("@/components/AddCategoryModal"), { ssr: false });
 
 export default function Kategori() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editData, setEditData] = useState<{ name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [txRes, catRes] = await Promise.all([
+        supabase.from('transactions').select('*'),
+        supabase.from('categories').select('*')
+      ]);
+      if (txRes.data) setTransactions(txRes.data);
+      if (catRes.data) setDbCategories(catRes.data);
+      setIsLoading(false);
+    };
+
+    fetchData();
+
+    const channel = supabase
+      .channel('public:kategori')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refreshTrigger]);
+
+  const categories = useMemo(() => {
+    const catMap: Record<string, any> = {};
+    
+    dbCategories.forEach(cat => {
+      catMap[cat.name] = { ...cat, total: 0, count: 0 };
+    });
+
+    transactions.forEach(t => {
+      if (!catMap[t.category]) {
+        catMap[t.category] = { name: t.category, total: 0, count: 0, type: t.type, icon: null, color: null };
+      }
+      catMap[t.category].total += t.amount;
+      catMap[t.category].count += 1;
+    });
+
+    return Object.values(catMap).sort((a: any, b: any) => b.total - a.total);
+  }, [transactions, dbCategories]);
+
+  const formatRp = (num: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
+
+  const getIconForCategory = (name: string, iconKey: string | null) => {
+    if (iconKey === 'coffee') return <CoffeeIcon />;
+    if (iconKey === 'truck') return <TruckIcon />;
+    if (iconKey === 'book') return <BookIcon />;
+    if (iconKey === 'cart') return <CartIcon />;
+    if (iconKey === 'laptop') return <LaptopIcon />;
+    const n = name.toLowerCase();
+    if (n.includes('makan') || n.includes('minum') || n.includes('kopi')) return <CoffeeIcon />;
+    if (n.includes('transpor') || n.includes('bensin') || n.includes('grab')) return <TruckIcon />;
+    if (n.includes('langgan') || n.includes('spotify') || n.includes('netflix')) return <BookIcon />;
+    if (n.includes('belanja') || n.includes('pasar') || n.includes('supermarket')) return <CartIcon />;
+    return <TrendingUpIcon />;
+  };
 
   const openAdd = () => {
     setEditData(null);
@@ -20,17 +86,27 @@ export default function Kategori() {
     setIsModalOpen(true);
   };
 
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleDeleteConfirm = (name: string) => {
+    setDeleteTarget(name);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteTarget) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('categories').delete().eq('user_id', user.id).eq('name', deleteTarget);
+      setRefreshTrigger(prev => prev + 1);
+      showToast("Kategori berhasil dihapus!");
+    }
+    setDeleteTarget(null);
+  };
+
   const btnPrimaryClass = "inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-medium text-[14px] transition-all duration-200 cursor-pointer bg-primary text-white border border-primary shadow-[0_1px_2px_rgba(255,107,0,0.1)] hover:bg-primary-hover hover:border-primary-hover hover:shadow-[0_4px_12px_rgba(255,107,0,0.2)] hover:-translate-y-[1px] [&>svg]:w-4 [&>svg]:h-4";
-
-  const categoryCardClass = "bg-surface border border-border rounded-xl p-5 hover:border-primary/30 transition-colors duration-200";
-  const catIconClass = "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 [&>svg]:w-6 [&>svg]:h-6";
-  const catTypeClass = "inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-medium max-w-max";
-  const catTypeExpenseClass = `${catTypeClass} bg-danger-surface text-danger`;
-  const catTypeIncomeClass = `${catTypeClass} bg-success-surface text-success`;
-  const catTypeAllClass = `${catTypeClass} bg-surface-secondary text-text-secondary`;
-
-  const catActionBtnClass = "w-8 h-8 rounded-lg flex items-center justify-center text-text-tertiary hover:bg-surface-secondary hover:text-text-primary transition-colors duration-200 cursor-pointer [&>svg]:w-4 [&>svg]:h-4 bg-transparent border-none";
-  const catActionBtnDangerClass = "w-8 h-8 rounded-lg flex items-center justify-center text-text-tertiary hover:bg-danger-surface hover:text-danger transition-colors duration-200 cursor-pointer [&>svg]:w-4 [&>svg]:h-4 bg-transparent border-none";
 
   return (
     <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8" id="main-content">
@@ -48,241 +124,97 @@ export default function Kategori() {
       </header>
 
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Daftar kategori">
-
-        <article className={categoryCardClass} data-id="1">
-          <div className="flex items-start gap-4 mb-6">
-            <div className={catIconClass} style={{background: 'rgba(255,107,0,0.08)', color: '#FF6B00'}} aria-hidden="true">
-              <CoffeeIcon />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[16px] font-semibold text-text-primary flex items-center gap-2 mb-1 truncate">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background: '#FF6B00'}} aria-hidden="true"></span>
-                Makanan
+        {isLoading ? (
+          <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Memuat kategori...</div>
+        ) : categories.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Kategori belum tersedia. Ketik pengeluaran di Telegram!</div>
+        ) : categories.map((cat, i) => (
+            <div key={i} className="bg-surface border border-border rounded-xl p-5 hover:shadow-sm transition-all duration-200 group">
+              <div className="flex items-start justify-between mb-4">
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-200 [&>svg]:w-6 [&>svg]:h-6"
+                  style={{
+                    backgroundColor: cat.color ? `${cat.color}20` : (cat.type === 'income' ? 'var(--color-success-surface)' : 'var(--color-primary-surface)'),
+                    color: cat.color || (cat.type === 'income' ? 'var(--color-success)' : 'var(--color-primary)')
+                  }}
+                  aria-hidden="true"
+                >
+                  {getIconForCategory(cat.name, cat.icon)}
+                </div>
+                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-surface-secondary hover:text-text-primary transition-colors cursor-pointer border-none bg-transparent" aria-label={`Edit kategori ${cat.name}`} onClick={() => openEdit(cat.name)}>
+                    <EditIcon className="w-4 h-4" />
+                  </button>
+                  <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-danger-surface hover:text-danger transition-colors cursor-pointer border-none bg-transparent" aria-label={`Hapus kategori ${cat.name}`} onClick={() => handleDeleteConfirm(cat.name)}>
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <span className={catTypeExpenseClass}>Pengeluaran</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button className={catActionBtnClass} type="button" aria-label="Edit kategori Makanan" onClick={() => openEdit("Makanan")}>
-                <EditIcon />
-              </button>
-              <button className={catActionBtnDangerClass} type="button" aria-label="Hapus kategori Makanan">
-                <TrashIcon />
-              </button>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Transaksi</span>
-              <span className="font-semibold text-text-primary">28 transaksi</span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Total bulan ini</span>
-              <span className="font-semibold text-text-primary font-mono tabular-nums">Rp1.148.000</span>
-            </div>
-          </div>
-        </article>
-
-        <article className={categoryCardClass} data-id="2">
-          <div className="flex items-start gap-4 mb-6">
-            <div className={catIconClass} style={{background: 'rgba(255,138,51,0.08)', color: '#FF8A33'}} aria-hidden="true">
-              <TruckIcon />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[16px] font-semibold text-text-primary flex items-center gap-2 mb-1 truncate">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background: '#FF8A33'}} aria-hidden="true"></span>
-                Transportasi
+              <div className="text-[17px] font-semibold text-text-primary mb-1 capitalize truncate" title={cat.name}>{cat.name}</div>
+              <div className="text-[13px] text-text-secondary flex items-center justify-between mb-4">
+                <span>{cat.count} transaksi</span>
+                <span className={cat.type === 'income' ? 'text-success' : 'text-danger'}>{cat.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</span>
               </div>
-              <span className={catTypeExpenseClass}>Pengeluaran</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button className={catActionBtnClass} type="button" aria-label="Edit kategori Transportasi" onClick={() => openEdit("Transportasi")}>
-                <EditIcon />
-              </button>
-              <button className={catActionBtnDangerClass} type="button" aria-label="Hapus kategori Transportasi">
-                <TrashIcon />
-              </button>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Transaksi</span>
-              <span className="font-semibold text-text-primary">15 transaksi</span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Total bulan ini</span>
-              <span className="font-semibold text-text-primary font-mono tabular-nums">Rp721.600</span>
-            </div>
-          </div>
-        </article>
-
-        <article className={categoryCardClass} data-id="3">
-          <div className="flex items-start gap-4 mb-6">
-            <div className={catIconClass} style={{background: 'rgba(255,179,102,0.08)', color: '#FFB366'}} aria-hidden="true">
-              <BookIcon />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[16px] font-semibold text-text-primary flex items-center gap-2 mb-1 truncate">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background: '#FFB366'}} aria-hidden="true"></span>
-                Langganan
+              <div className="pt-4 border-t border-border flex items-center justify-between">
+                <span className="text-[12px] text-text-tertiary uppercase tracking-wider font-medium">Total Perputaran</span>
+                <span className={`font-mono text-[15px] font-bold ${cat.type === 'income' ? 'text-success' : 'text-text-primary'}`}>
+                  {cat.type === 'income' ? '+' : ''}{formatRp(cat.total)}
+                </span>
               </div>
-              <span className={catTypeExpenseClass}>Pengeluaran</span>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button className={catActionBtnClass} type="button" aria-label="Edit kategori Langganan" onClick={() => openEdit("Langganan")}>
-                <EditIcon />
-              </button>
-              <button className={catActionBtnDangerClass} type="button" aria-label="Hapus kategori Langganan">
-                <TrashIcon />
-              </button>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Transaksi</span>
-              <span className="font-semibold text-text-primary">4 transaksi</span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Total bulan ini</span>
-              <span className="font-semibold text-text-primary font-mono tabular-nums">Rp590.400</span>
-            </div>
-          </div>
-        </article>
-
-        <article className={categoryCardClass} data-id="4">
-          <div className="flex items-start gap-4 mb-6">
-            <div className={catIconClass} style={{background: 'rgba(28,25,23,0.08)', color: '#1C1917'}} aria-hidden="true">
-              <CartIcon />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[16px] font-semibold text-text-primary flex items-center gap-2 mb-1 truncate">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background: '#1C1917'}} aria-hidden="true"></span>
-                Belanja
-              </div>
-              <span className={catTypeExpenseClass}>Pengeluaran</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button className={catActionBtnClass} type="button" aria-label="Edit kategori Belanja" onClick={() => openEdit("Belanja")}>
-                <EditIcon />
-              </button>
-              <button className={catActionBtnDangerClass} type="button" aria-label="Hapus kategori Belanja">
-                <TrashIcon />
-              </button>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Transaksi</span>
-              <span className="font-semibold text-text-primary">8 transaksi</span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Total bulan ini</span>
-              <span className="font-semibold text-text-primary font-mono tabular-nums">Rp492.000</span>
-            </div>
-          </div>
-        </article>
-
-        <article className={categoryCardClass} data-id="5">
-          <div className="flex items-start gap-4 mb-6">
-            <div className={catIconClass} style={{background: 'rgba(168,162,158,0.08)', color: '#A8A29E'}} aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/></svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[16px] font-semibold text-text-primary flex items-center gap-2 mb-1 truncate">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background: '#A8A29E'}} aria-hidden="true"></span>
-                Lainnya
-              </div>
-              <span className={catTypeAllClass}>Semua</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button className={catActionBtnClass} type="button" aria-label="Edit kategori Lainnya" onClick={() => openEdit("Lainnya")}>
-                <EditIcon />
-              </button>
-              <button className={catActionBtnDangerClass} type="button" aria-label="Hapus kategori Lainnya">
-                <TrashIcon />
-              </button>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Transaksi</span>
-              <span className="font-semibold text-text-primary">3 transaksi</span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Total bulan ini</span>
-              <span className="font-semibold text-text-primary font-mono tabular-nums">Rp328.000</span>
-            </div>
-          </div>
-        </article>
-
-        <article className={categoryCardClass} data-id="6">
-          <div className="flex items-start gap-4 mb-6">
-            <div className={catIconClass} style={{background: 'rgba(22,163,74,0.08)', color: '#16A34A'}} aria-hidden="true">
-              <TrendingUpIcon />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[16px] font-semibold text-text-primary flex items-center gap-2 mb-1 truncate">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background: '#16A34A'}} aria-hidden="true"></span>
-                Gaji
-              </div>
-              <span className={catTypeIncomeClass}>Pemasukan</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button className={catActionBtnClass} type="button" aria-label="Edit kategori Gaji" onClick={() => openEdit("Gaji")}>
-                <EditIcon />
-              </button>
-              <button className={catActionBtnDangerClass} type="button" aria-label="Hapus kategori Gaji">
-                <TrashIcon />
-              </button>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Transaksi</span>
-              <span className="font-semibold text-text-primary">1 transaksi</span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Total bulan ini</span>
-              <span className="font-semibold text-text-primary font-mono tabular-nums">Rp5.000.000</span>
-            </div>
-          </div>
-        </article>
-
-        <article className={categoryCardClass} data-id="7">
-          <div className="flex items-start gap-4 mb-6">
-            <div className={catIconClass} style={{background: 'rgba(22,163,74,0.08)', color: '#16A34A'}} aria-hidden="true">
-              <LaptopIcon />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[16px] font-semibold text-text-primary flex items-center gap-2 mb-1 truncate">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{background: '#16A34A'}} aria-hidden="true"></span>
-                Freelance
-              </div>
-              <span className={catTypeIncomeClass}>Pemasukan</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button className={catActionBtnClass} type="button" aria-label="Edit kategori Freelance" onClick={() => openEdit("Freelance")}>
-                <EditIcon />
-              </button>
-              <button className={catActionBtnDangerClass} type="button" aria-label="Hapus kategori Freelance">
-                <TrashIcon />
-              </button>
-            </div>
-          </div>
-          <div className="pt-4 border-t border-border flex flex-col gap-3">
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Transaksi</span>
-              <span className="font-semibold text-text-primary">2 transaksi</span>
-            </div>
-            <div className="flex items-center justify-between text-[13px]">
-              <span className="text-text-secondary">Total bulan ini</span>
-              <span className="font-semibold text-text-primary font-mono tabular-nums">Rp3.500.000</span>
-            </div>
-          </div>
-        </article>
-
+          ))}
       </section>
 
-      <AddCategoryModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} initialData={editData} />
+      <AddCategoryModal 
+        isOpen={isModalOpen} 
+        onClose={(successMsg) => {
+          setIsModalOpen(false);
+          if (successMsg) {
+            setRefreshTrigger(prev => prev + 1);
+            showToast(successMsg);
+          }
+        }} 
+        initialData={editData} 
+      />
+
+      {toast && (
+        <div className="fixed top-6 right-6 z-[200] animate-slide-in-right">
+          <div className="bg-surface border border-success/20 text-success px-6 py-3.5 rounded-xl shadow-[0_4px_12px_rgba(22,163,74,0.1)] flex items-center gap-3 text-[14.5px] font-medium">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-.997-6l7.07-7.071-1.414-1.414-5.656 5.657-2.829-2.829-1.414 1.414L11.003 16z"/></svg>
+            {toast}
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4 transition-opacity duration-200" role="dialog" aria-modal="true" onClick={(e) => {
+          if (e.target === e.currentTarget) setDeleteTarget(null);
+        }}>
+          <div className="bg-surface rounded-2xl w-full max-w-[400px] shadow-xl p-6 transform transition-transform duration-200 scale-100">
+            <div className="w-12 h-12 rounded-full bg-danger-surface text-danger flex items-center justify-center mb-4 [&>svg]:w-6 [&>svg]:h-6">
+              <WarningIcon />
+            </div>
+            <h2 className="text-[18px] font-semibold text-text-primary mb-2">Hapus Kategori?</h2>
+            <p className="text-[14px] text-text-secondary mb-6 leading-relaxed">
+              Apakah Anda yakin ingin menghapus kategori <span className="font-semibold text-text-primary capitalize">"{deleteTarget}"</span>? Kategori ini akan hilang dari daftar jika tidak ada transaksi yang menggunakannya.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button 
+                className="px-5 py-2.5 rounded-lg text-[13px] font-medium text-text-secondary hover:bg-surface-secondary hover:text-text-primary transition-colors cursor-pointer border-none bg-transparent"
+                onClick={() => setDeleteTarget(null)}
+              >
+                Batal
+              </button>
+              <button 
+                className="px-5 py-2.5 rounded-lg text-[13px] font-medium text-white bg-danger hover:bg-danger/90 transition-colors cursor-pointer border-none shadow-[0_1px_2px_rgba(220,38,38,0.1)]"
+                onClick={executeDelete}
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

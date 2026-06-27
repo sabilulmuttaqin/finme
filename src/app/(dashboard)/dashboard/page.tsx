@@ -1,14 +1,99 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { DownloadIcon, PlusIcon, WalletIcon, TrendingUpIcon, ArrowUpIcon, TrendingDownIcon, ArrowDownIcon, StarIcon, SettingsIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
+import { LineChart, Line, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 const AddTransactionModal = dynamic(() => import("@/components/AddTransactionModal"), { ssr: false });
 
 export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [budgets, setBudgets] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [txRes, bdgRes] = await Promise.all([
+        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+        supabase.from('budgets').select('category, limit_amount')
+      ]);
+        
+      if (txRes.data) setTransactions(txRes.data);
+      if (bdgRes.data) {
+        const bdgMap: Record<string, number> = {};
+        bdgRes.data.forEach(b => bdgMap[b.category] = b.limit_amount);
+        setBudgets(bdgMap);
+      }
+      setIsLoading(false);
+    };
+
+    fetchData();
+
+    const channel = supabase
+      .channel('public:transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'budgets' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const balance = totalIncome - totalExpense;
+
+  const formatRp = (num: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
+
+  const { lineChartData, donutData, categoryColors } = useMemo(() => {
+    if (!transactions.length) return { lineChartData: [], donutData: [], categoryColors: {} };
+
+    // Line Chart: Expense last 30 days
+    const last30Days = new Date();
+    last30Days.setDate(last30Days.getDate() - 30);
+    
+    const expenses30d = transactions.filter(t => t.type === 'expense' && new Date(t.created_at) >= last30Days);
+    const dailyMap: Record<string, number> = {};
+    expenses30d.forEach(t => {
+      const date = new Date(t.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      dailyMap[date] = (dailyMap[date] || 0) + t.amount;
+    });
+    
+    const lineChartData = Object.keys(dailyMap).reverse().map(date => ({
+      name: date,
+      value: dailyMap[date]
+    }));
+
+    // Donut Chart: Expense by Category this month
+    const thisMonth = new Date().getMonth();
+    const expensesThisMonth = transactions.filter(t => t.type === 'expense' && new Date(t.created_at).getMonth() === thisMonth);
+    
+    const catMap: Record<string, number> = {};
+    expensesThisMonth.forEach(t => {
+      catMap[t.category] = (catMap[t.category] || 0) + t.amount;
+    });
+
+    const donutData = Object.keys(catMap).map(cat => ({
+      name: cat,
+      value: catMap[cat]
+    })).sort((a, b) => b.value - a.value); // Sort highest first
+
+    const COLORS = ['#FF6B00', '#FF8A33', '#FFB366', '#1C1917', '#A8A29E', '#d97706', '#9ca3af', '#4b5563'];
+    const categoryColors: Record<string, string> = {};
+    donutData.forEach((d, i) => categoryColors[d.name] = COLORS[i % COLORS.length]);
+
+    return { lineChartData, donutData, categoryColors };
+  }, [transactions]);
 
   // Shared classes
   const btnClass = "inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-sm text-[13px] font-medium transition-colors duration-150 min-h-[44px] cursor-pointer";
@@ -55,24 +140,24 @@ export default function Dashboard() {
             <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><WalletIcon /></span>
             Total Saldo
           </div>
-          <div className={metricValueClass}>Rp12.450.000</div>
-          <div className={`${metricChangeClass} bg-success-surface text-success`}><ArrowUpIcon aria-hidden="true" />+8.2% dari bulan lalu</div>
+          <div className={metricValueClass}>{isLoading ? "..." : formatRp(balance)}</div>
+          <div className={`${metricChangeClass} bg-surface-secondary text-text-tertiary`}>Terkini</div>
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
             <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><TrendingUpIcon /></span>
             Pemasukan
           </div>
-          <div className={metricValueClass}>Rp8.500.000</div>
-          <div className={`${metricChangeClass} bg-success-surface text-success`}><ArrowUpIcon aria-hidden="true" />+12.5% dari bulan lalu</div>
+          <div className={metricValueClass}>{isLoading ? "..." : formatRp(totalIncome)}</div>
+          <div className={`${metricChangeClass} bg-surface-secondary text-text-tertiary`}>Bulan ini</div>
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
             <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><TrendingDownIcon /></span>
             Pengeluaran
           </div>
-          <div className={metricValueClass}>Rp3.280.000</div>
-          <div className={`${metricChangeClass} bg-danger-surface text-danger`}><ArrowDownIcon aria-hidden="true" />-4.1% dari bulan lalu</div>
+          <div className={metricValueClass}>{isLoading ? "..." : formatRp(totalExpense)}</div>
+          <div className={`${metricChangeClass} bg-surface-secondary text-text-tertiary`}>Bulan ini</div>
         </article>
       </section>
 
@@ -82,28 +167,22 @@ export default function Dashboard() {
             <div><div className="text-[15px] font-semibold">Tren Pengeluaran Harian</div><div className="text-[12px] text-text-tertiary font-normal">30 hari terakhir</div></div>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary">Line Chart</span>
           </div>
-          <div className="relative w-full aspect-2/1 [&>svg]:w-full [&>svg]:h-full" role="img" aria-label="Grafik garis tren pengeluaran harian">
-            <svg viewBox="0 0 480 200" fill="none" preserveAspectRatio="xMidYMid meet">
-              <line x1="40" y1="20" x2="40" y2="180" stroke="var(--color-border)" strokeWidth="1"/>
-              <line x1="40" y1="180" x2="460" y2="180" stroke="var(--color-border)" strokeWidth="1"/>
-              <line x1="40" y1="60" x2="460" y2="60" stroke="var(--color-border-light)" strokeWidth="1" strokeDasharray="4"/>
-              <line x1="40" y1="100" x2="460" y2="100" stroke="var(--color-border-light)" strokeWidth="1" strokeDasharray="4"/>
-              <line x1="40" y1="140" x2="460" y2="140" stroke="var(--color-border-light)" strokeWidth="1" strokeDasharray="4"/>
-              <text x="4" y="64" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">300rb</text>
-              <text x="4" y="104" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">200rb</text>
-              <text x="4" y="144" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">100rb</text>
-              <text x="4" y="184" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">0</text>
-              <text x="55" y="196" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">1</text>
-              <text x="127" y="196" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">7</text>
-              <text x="204" y="196" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">14</text>
-              <text x="283" y="196" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">21</text>
-              <text x="415" y="196" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-mono)">30</text>
-              <defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#FF6B00" stopOpacity="0.15"/><stop offset="100%" stopColor="#FF6B00" stopOpacity="0"/></linearGradient></defs>
-              <path d="M55 150 L75 140 L95 130 L115 145 L135 110 L155 90 L175 70 L195 85 L215 65 L235 80 L255 95 L275 75 L295 55 L315 70 L335 100 L355 120 L375 110 L395 125 L415 135 L435 140 L435 180 L55 180 Z" fill="url(#lineGrad)"/>
-              <polyline points="55,150 75,140 95,130 115,145 135,110 155,90 175,70 195,85 215,65 235,80 255,95 275,75 295,55 315,70 335,100 355,120 375,110 395,125 415,135 435,140" stroke="#FF6B00" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="295" cy="55" r="4" fill="#FF6B00" stroke="var(--color-surface)" strokeWidth="2"/>
-              <circle cx="215" cy="65" r="4" fill="#FF6B00" stroke="var(--color-surface)" strokeWidth="2"/>
-            </svg>
+          <div className="w-full h-[200px]" role="img" aria-label="Grafik garis tren pengeluaran harian">
+            {lineChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={lineChartData} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="name" tick={{fontSize: 10, fill: 'var(--color-text-tertiary)'}} axisLine={false} tickLine={false} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '12px' }}
+                    itemStyle={{ color: 'var(--color-text-primary)' }}
+                    formatter={(val: any) => [formatRp(Number(val)), "Pengeluaran"]}
+                  />
+                  <Line type="monotone" dataKey="value" stroke="#FF6B00" strokeWidth={2} dot={{ r: 3, fill: "#FF6B00", strokeWidth: 2, stroke: "var(--color-surface)" }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[12px] text-text-tertiary">Belum ada data pengeluaran</div>
+            )}
           </div>
         </article>
         <article className={cardClass}>
@@ -111,23 +190,46 @@ export default function Dashboard() {
             <div><div className="text-[15px] font-semibold">Distribusi Kategori</div><div className="text-[12px] text-text-tertiary font-normal">Pengeluaran bulan ini</div></div>
             <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary">Donut Chart</span>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-6" role="img" aria-label="Diagram donat distribusi">
-            <svg className="w-[160px] h-[160px] shrink-0" viewBox="0 0 160 160" aria-hidden="true">
-              <circle cx="80" cy="80" r="60" fill="none" stroke="#FF6B00" strokeWidth="20" strokeDasharray="131.95 245.04" strokeDashoffset="-61.26" transform="rotate(-90 80 80)"/>
-              <circle cx="80" cy="80" r="60" fill="none" stroke="#FF8A33" strokeWidth="20" strokeDasharray="82.94 294.05" strokeDashoffset="-193.21" transform="rotate(-90 80 80)"/>
-              <circle cx="80" cy="80" r="60" fill="none" stroke="#FFB366" strokeWidth="20" strokeDasharray="67.86 309.13" strokeDashoffset="-276.15" transform="rotate(-90 80 80)"/>
-              <circle cx="80" cy="80" r="60" fill="none" stroke="#1C1917" strokeWidth="20" strokeDasharray="56.55 320.44" strokeDashoffset="-344.01" transform="rotate(-90 80 80)"/>
-              <circle cx="80" cy="80" r="60" fill="none" stroke="#A8A29E" strokeWidth="20" strokeDasharray="37.70 339.29" strokeDashoffset="-400.56" transform="rotate(-90 80 80)"/>
-              <circle cx="80" cy="80" r="48" fill="var(--color-surface)"/>
-              <text x="80" y="76" textAnchor="middle" fontSize="18" fontWeight="700" fill="var(--color-text-primary)" fontFamily="var(--font-mono)">3.28jt</text>
-              <text x="80" y="92" textAnchor="middle" fontSize="10" fill="var(--color-text-tertiary)" fontFamily="var(--font-ui)">Total</text>
-            </svg>
-            <div className="flex flex-col gap-2.5 flex-1 w-full">
-              <div className="flex items-center gap-2 text-[13px]"><span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{background:'#FF6B00'}} aria-hidden="true"></span><span className="flex-1 text-text-secondary">Makanan</span><span className="font-mono font-semibold tabular-nums text-[13px]">Rp1.148.000</span></div>
-              <div className="flex items-center gap-2 text-[13px]"><span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{background:'#FF8A33'}} aria-hidden="true"></span><span className="flex-1 text-text-secondary">Transportasi</span><span className="font-mono font-semibold tabular-nums text-[13px]">Rp721.600</span></div>
-              <div className="flex items-center gap-2 text-[13px]"><span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{background:'#FFB366'}} aria-hidden="true"></span><span className="flex-1 text-text-secondary">Langganan</span><span className="font-mono font-semibold tabular-nums text-[13px]">Rp590.400</span></div>
-              <div className="flex items-center gap-2 text-[13px]"><span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{background:'#1C1917'}} aria-hidden="true"></span><span className="flex-1 text-text-secondary">Belanja</span><span className="font-mono font-semibold tabular-nums text-[13px]">Rp492.000</span></div>
-              <div className="flex items-center gap-2 text-[13px]"><span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{background:'#A8A29E'}} aria-hidden="true"></span><span className="flex-1 text-text-secondary">Lainnya</span><span className="font-mono font-semibold tabular-nums text-[13px]">Rp328.000</span></div>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="w-[160px] h-[160px] shrink-0 relative">
+              {donutData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={donutData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {donutData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={categoryColors[entry.name]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(val: any) => formatRp(Number(val))} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[15px] font-bold text-text-primary">{formatRp(donutData.reduce((s, d) => s + d.value, 0)).replace('Rp', '')}</span>
+                    <span className="text-[10px] text-text-tertiary">Total</span>
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[12px] text-text-tertiary text-center border-[8px] border-surface-secondary rounded-full">Kosong</div>
+              )}
+            </div>
+            <div className="flex flex-col gap-2.5 flex-1 w-full max-h-[160px] overflow-y-auto pr-2">
+              {donutData.map((d, i) => (
+                <div key={d.name} className="flex items-center gap-2 text-[13px]">
+                  <span className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{background: categoryColors[d.name]}} aria-hidden="true"></span>
+                  <span className="flex-1 text-text-secondary capitalize truncate">{d.name}</span>
+                  <span className="font-mono font-semibold tabular-nums text-[13px]">{formatRp(d.value)}</span>
+                </div>
+              ))}
             </div>
           </div>
         </article>
@@ -160,26 +262,26 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><CoffeeIcon aria-hidden="true" />Makanan</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp1.148.000 / Rp1.200.000</span></div>
-              <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-danger" style={{width: '95.7%'}}></div></div>
-              <span className="text-[11px] font-medium text-right text-danger">95.7%</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><TruckIcon aria-hidden="true" />Transportasi</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp721.600 / Rp800.000</span></div>
-              <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-warning" style={{width: '90.2%'}}></div></div>
-              <span className="text-[11px] font-medium text-right text-warning">90.2%</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><BookIcon aria-hidden="true" />Langganan</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp590.400 / Rp1.000.000</span></div>
-              <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-primary" style={{width: '59%'}}></div></div>
-              <span className="text-[11px] font-medium text-right text-primary">59.0%</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><CartIcon aria-hidden="true" />Belanja</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp492.000 / Rp1.500.000</span></div>
-              <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-primary" style={{width: '32.8%'}}></div></div>
-              <span className="text-[11px] font-medium text-right text-primary">32.8%</span>
-            </div>
+            {donutData.length > 0 ? donutData.slice(0, 4).map(d => {
+              const limit = budgets[d.name] || 1000000; // default 1jt if not set
+              const pct = Math.min((d.value / limit) * 100, 100);
+              const isDanger = pct > 90;
+              const isWarning = pct > 75 && !isDanger;
+              return (
+                <div key={d.name} className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary capitalize"><CoffeeIcon aria-hidden="true" />{d.name}</span>
+                    <span className="font-mono tabular-nums text-text-secondary text-[12px]">{formatRp(d.value)} / {formatRp(limit)}</span>
+                  </div>
+                  <div className="h-2 bg-surface-secondary rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-500 ease-out ${isDanger ? 'bg-danger' : isWarning ? 'bg-warning' : 'bg-primary'}`} style={{width: `${pct}%`}}></div>
+                  </div>
+                  <span className={`text-[11px] font-medium text-right ${isDanger ? 'text-danger' : isWarning ? 'text-warning' : 'text-primary'}`}>{pct.toFixed(1)}%</span>
+                </div>
+              )
+            }) : (
+              <div className="text-[13px] text-text-tertiary text-center py-4">Belum ada pengeluaran</div>
+            )}
           </div>
         </article>
 
@@ -189,36 +291,30 @@ export default function Dashboard() {
             <Link href="/transaksi" className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary hover:bg-border transition-colors">Lihat Semua</Link>
           </div>
           <div className="flex flex-col">
-            <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><CoffeeIcon /></div>
-              <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Kopi Starbucks</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Makanan</span><span aria-hidden="true">&middot;</span><span>Hari ini, 14:32</span></div></div>
-              <div className={`${txAmountClass} text-danger`}>-Rp58.000</div>
-            </div>
-            <div className={txItemClass}>
-              <div className={`${txIconClass} bg-success-surface text-success`} aria-hidden="true"><TrendingUpIcon /></div>
-              <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Gajian Masuk</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Pemasukan</span><span aria-hidden="true">&middot;</span><span>Hari ini, 09:00</span></div></div>
-              <div className={`${txAmountClass} text-success`}>+Rp5.000.000</div>
-            </div>
-            <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><TruckIcon /></div>
-              <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Bensin Pertamax</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Transportasi</span><span aria-hidden="true">&middot;</span><span>Kemarin, 17:45</span></div></div>
-              <div className={`${txAmountClass} text-danger`}>-Rp80.000</div>
-            </div>
-            <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><CoffeeIcon /></div>
-              <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Makan Siang McD</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Makanan</span><span aria-hidden="true">&middot;</span><span>Kemarin, 12:15</span></div></div>
-              <div className={`${txAmountClass} text-danger`}>-Rp54.000</div>
-            </div>
-            <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><BookIcon /></div>
-              <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Netflix Premium</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Langganan</span><span aria-hidden="true">&middot;</span><span>25 Jun, 00:01</span></div></div>
-              <div className={`${txAmountClass} text-danger`}>-Rp186.000</div>
-            </div>
-            <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><CartIcon /></div>
-              <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Tokopedia - Kabel USB-C</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Belanja</span><span aria-hidden="true">&middot;</span><span>24 Jun, 20:30</span></div></div>
-              <div className={`${txAmountClass} text-danger`}>-Rp45.000</div>
-            </div>
+            {isLoading ? (
+              <div className="py-8 text-center text-[13px] text-text-tertiary">Memuat data...</div>
+            ) : transactions.length === 0 ? (
+              <div className="py-8 text-center text-[13px] text-text-tertiary">Belum ada transaksi. Hubungkan Bot Telegram Anda!</div>
+            ) : (
+              transactions.slice(0, 6).map((tx) => (
+                <div key={tx.id} className={txItemClass}>
+                  <div className={`${txIconClass} ${tx.type === 'income' ? 'bg-success-surface text-success' : 'bg-danger-surface text-danger'}`} aria-hidden="true">
+                    {tx.type === 'income' ? <TrendingUpIcon /> : <WalletIcon />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis capitalize">{tx.description || tx.category}</div>
+                    <div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px">
+                      <span className="capitalize">{tx.category}</span>
+                      <span aria-hidden="true">&middot;</span>
+                      <span>{new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                    </div>
+                  </div>
+                  <div className={`${txAmountClass} ${tx.type === 'income' ? 'text-success' : 'text-danger'}`}>
+                    {tx.type === 'income' ? '+' : '-'}{formatRp(tx.amount)}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </article>
       </section>

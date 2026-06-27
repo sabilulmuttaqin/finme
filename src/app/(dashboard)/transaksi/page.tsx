@@ -1,14 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import { TrendingUpIcon, TrendingDownIcon, SearchIcon, MessageIcon, InfoIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { useState, useEffect } from "react";
+import { TrendingUpIcon, TrendingDownIcon, SearchIcon, MessageIcon, InfoIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, ChevronLeftIcon, ChevronRightIcon, WalletIcon } from "@/components/icons";
 import { FilterDropdown } from "@/components/FilterDropdown";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Transaksi() {
   const [activeTab, setActiveTab] = useState("Semua");
   const [filterBulan, setFilterBulan] = useState("Juni 2026");
   const [filterKategori, setFilterKategori] = useState("Semua Kategori");
   const [filterUrutkan, setFilterUrutkan] = useState("Terbaru");
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      let query = supabase.from('transactions').select('*');
+      
+      if (activeTab === 'Pemasukan') query = query.eq('type', 'income');
+      if (activeTab === 'Pengeluaran') query = query.eq('type', 'expense');
+      
+      if (filterKategori !== 'Semua Kategori') query = query.eq('category', filterKategori);
+      
+      if (filterUrutkan === 'Terbaru') query = query.order('created_at', { ascending: false });
+      if (filterUrutkan === 'Terlama') query = query.order('created_at', { ascending: true });
+      if (filterUrutkan === 'Terbesar') query = query.order('amount', { ascending: false });
+      if (filterUrutkan === 'Terkecil') query = query.order('amount', { ascending: true });
+
+      const { data } = await query;
+      if (data) setTransactions(data);
+      setIsLoading(false);
+    };
+
+    fetchTransactions();
+
+    const channel = supabase
+      .channel('public:transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        fetchTransactions();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab, filterBulan, filterKategori, filterUrutkan]);
   
   const txPageItemClass = "grid grid-cols-[1fr_auto] md:grid-cols-[100px_1fr_120px_120px_140px] gap-4 px-6 py-4 items-center border-b border-border-light hover:bg-surface-secondary/50 transition-colors duration-150 last:border-b-0 cursor-pointer";
   const txIconClass = "w-10 h-10 rounded-full flex items-center justify-center shrink-0 [&>svg]:w-5 [&>svg]:h-5";
@@ -67,8 +104,8 @@ export default function Transaksi() {
       <section className="bg-surface border border-border rounded-xl" style={{overflow: 'hidden'}} aria-label="Daftar transaksi">
         <div style={{padding: '20px 24px 0'}}>
           <div className="flex items-center justify-between py-4 border-b border-border">
-            <span className="text-[13px] text-text-secondary">Menampilkan <span className="font-semibold text-text-primary">10</span> dari <span className="font-semibold text-text-primary">117</span> transaksi</span>
-            <span className="font-semibold text-text-primary">Juni 2026</span>
+            <span className="text-[13px] text-text-secondary">Menampilkan <span className="font-semibold text-text-primary">{transactions.length}</span> transaksi</span>
+            <span className="font-semibold text-text-primary">{filterBulan}</span>
           </div>
         </div>
 
@@ -81,147 +118,36 @@ export default function Transaksi() {
             <span style={{textAlign: 'right'}}>Jumlah</span>
           </div>
           <div className="flex flex-col">
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">27 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><CoffeeIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Kopi Starbucks</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Makanan &middot; 27 Jun</div>
+            {isLoading ? (
+              <div className="py-12 text-center text-[13px] text-text-tertiary">Memuat transaksi...</div>
+            ) : transactions.length === 0 ? (
+              <div className="py-12 text-center text-[13px] text-text-tertiary">Tidak ada transaksi ditemukan.</div>
+            ) : (
+              transactions.map((tx) => (
+                <div key={tx.id} className={txPageItemClass}>
+                  <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">
+                    {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={tx.type === 'income' ? txIconIncomeClass : txIconExpenseClass} aria-hidden="true">
+                      {tx.type === 'income' ? <TrendingUpIcon /> : <WalletIcon />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[14px] font-medium text-text-primary truncate capitalize">{tx.description || tx.category}</div>
+                      <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate capitalize">{tx.category} &middot; {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</div>
+                    </div>
+                  </div>
+                  <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max capitalize">{tx.category}</span>
+                  <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5">
+                    {tx.is_manual_web ? <InfoIcon aria-hidden="true" /> : <MessageIcon aria-hidden="true" />}
+                    {tx.is_manual_web ? 'Manual' : 'Telegram'}
+                  </span>
+                  <div className={`text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap ${tx.type === 'income' ? 'text-success' : 'text-text-primary'}`}>
+                    {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString('id-ID')}
+                  </div>
                 </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Makanan</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><MessageIcon aria-hidden="true" />Telegram</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp58.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">27 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconIncomeClass} aria-hidden="true"><TrendingUpIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Gajian Bulanan</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Pemasukan &middot; 27 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Pemasukan</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><MessageIcon aria-hidden="true" />Telegram</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-success">+Rp5.000.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">26 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><TruckIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Bensin Pertamax</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Transportasi &middot; 26 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Transportasi</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><MessageIcon aria-hidden="true" />Telegram</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp80.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">26 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><CoffeeIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Makan Siang McD</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Makanan &middot; 26 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Makanan</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><InfoIcon aria-hidden="true" />Manual</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp54.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">25 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><BookIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Netflix Premium</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Langganan &middot; 25 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Langganan</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><MessageIcon aria-hidden="true" />Telegram</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp186.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">24 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><CartIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Tokopedia - Kabel USB-C</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Belanja &middot; 24 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Belanja</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><InfoIcon aria-hidden="true" />Manual</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp45.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">23 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconIncomeClass} aria-hidden="true"><TrendingUpIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Transfer dari Klien</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Pemasukan &middot; 23 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Pemasukan</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><MessageIcon aria-hidden="true" />Telegram</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-success">+Rp3.500.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">22 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><CoffeeIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Warteg Makan Malam</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Makanan &middot; 22 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Makanan</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><MessageIcon aria-hidden="true" />Telegram</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp25.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">21 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><TruckIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Grab Car ke Kantor</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Transportasi &middot; 21 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Transportasi</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><MessageIcon aria-hidden="true" />Telegram</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp32.000</div>
-            </div>
-
-            <div className={txPageItemClass}>
-              <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">20 Jun 2026</span>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={txIconExpenseClass} aria-hidden="true"><BookIcon /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-medium text-text-primary truncate">Spotify Family</div>
-                  <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate">Langganan &middot; 20 Jun</div>
-                </div>
-              </div>
-              <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max">Langganan</span>
-              <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5"><InfoIcon aria-hidden="true" />Manual</span>
-              <div className="text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap text-text-primary">-Rp59.000</div>
-            </div>
-
+              ))
+            )}
           </div>
         </div>
       </section>

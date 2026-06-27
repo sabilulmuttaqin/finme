@@ -1,11 +1,96 @@
 "use client";
 
-import { useState } from "react";
-import { WalletIcon, TrendingDownIcon, CheckIcon, SaveIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon } from "@/components/icons";
+import { useState, useEffect, useMemo } from "react";
+import { WalletIcon, TrendingDownIcon, CheckIcon, SaveIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, LaptopIcon } from "@/components/icons";
 import { FilterDropdown } from "@/components/FilterDropdown";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Anggaran() {
-  const [filterBulan, setFilterBulan] = useState("Juni 2026");
+  const [filterBulan, setFilterBulan] = useState("Semua Waktu");
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+  const [limits, setLimits] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  const supabase = createClient();
+
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const { data: trx } = await supabase.from('transactions').select('*').eq('type', 'expense');
+      const { data: bdg } = await supabase.from('budgets').select('*');
+      const { data: cat } = await supabase.from('categories').select('name, type');
+      
+      if (trx) setTransactions(trx);
+      if (cat) setDbCategories(cat.filter(c => c.type !== 'income').map(c => c.name.toLowerCase()));
+      if (bdg) {
+        setBudgets(bdg);
+        const lim: Record<string, number> = {};
+        bdg.forEach(b => lim[b.category] = b.limit_amount);
+        setLimits(lim);
+      }
+      setIsLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  const handleSaveLimit = async (category: string, newLimit: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const period = "2026-06"; // Default period for now
+      await supabase
+        .from('budgets')
+        .upsert({ 
+          user_id: user.id, 
+          category: category, 
+          limit_amount: newLimit, 
+          period_month_year: period 
+        }, { onConflict: 'user_id,category,period_month_year' });
+        
+      showToast(`Limit ${category} berhasil disimpan!`);
+    } catch (err: any) {
+      console.error('Gagal menyimpan limit: ', err.message);
+    }
+  };
+
+  const getIconForCategory = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('makan') || n.includes('minum') || n.includes('kopi')) return <CoffeeIcon />;
+    if (n.includes('transpor') || n.includes('bensin') || n.includes('grab')) return <TruckIcon />;
+    if (n.includes('langgan') || n.includes('spotify') || n.includes('netflix')) return <BookIcon />;
+    if (n.includes('belanja') || n.includes('pasar') || n.includes('supermarket')) return <CartIcon />;
+    return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/></svg>;
+  };
+
+  const budgetData = useMemo(() => {
+    const expensesByCategory: Record<string, number> = {};
+    transactions.forEach(t => {
+      expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
+    });
+
+    const combinedCategories = Array.from(new Set([...Object.keys(expensesByCategory), ...Object.keys(limits), ...dbCategories]));
+
+    return combinedCategories.map(cat => {
+      const used = expensesByCategory[cat] || 0;
+      const limit = limits[cat] || 0; // Default limit 0
+      const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : (used > 0 ? 100 : 0);
+      return { category: cat, used, limit, pct };
+    }).sort((a, b) => b.pct - a.pct);
+  }, [transactions, limits]);
+
+  const totalLimit = budgetData.reduce((sum, b) => sum + b.limit, 0);
+  const totalUsed = budgetData.reduce((sum, b) => sum + b.used, 0);
+  const totalPct = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
+  const formatRp = (num: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
+
   // Shared classes
   const metricCardClass = "bg-surface border border-border rounded-xl px-6 py-5 flex flex-col gap-2 transition-shadow duration-200 hover:shadow-md";
   const metricLabelClass = "flex items-center gap-2 text-[12px] font-medium text-text-secondary uppercase tracking-[0.04em]";
@@ -14,7 +99,7 @@ export default function Anggaran() {
   
   const budgetCardClass = "bg-surface border border-border rounded-xl p-5 hover:border-border-hover transition-colors duration-200";
   const budgetIconClass = "w-10 h-10 rounded-lg bg-surface-secondary flex items-center justify-center text-text-secondary [&>svg]:w-5 [&>svg]:h-5";
-  const budgetInputClass = "w-28 bg-surface border border-border rounded-md px-2 py-1 text-right text-[13px] font-mono font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all";
+  const budgetInputClass = "w-28 bg-surface border border-border rounded-md px-2 py-1 text-right text-[13px] font-mono font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
   return (
     <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8" id="main-content">
@@ -27,12 +112,8 @@ export default function Anggaran() {
           <FilterDropdown
             value={filterBulan}
             onChange={setFilterBulan}
-            options={["Juni 2026", "Mei 2026", "April 2026", "Maret 2026"]}
+            options={["Semua Waktu"]}
           />
-          <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-white hover:bg-primary-hover shadow-sm hover:shadow active:translate-y-px [&>svg]:w-4 [&>svg]:h-4" type="button">
-            <SaveIcon aria-hidden="true" />
-            Simpan
-          </button>
         </div>
       </header>
 
@@ -42,7 +123,7 @@ export default function Anggaran() {
             <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><WalletIcon /></span>
             Total Budget
           </div>
-          <div className={metricValueClass}>Rp4.500.000</div>
+          <div className={metricValueClass}>{formatRp(totalLimit)}</div>
           <div className="text-[12px] text-text-tertiary mt-1">Batas pengeluaran bulan ini</div>
         </article>
         <article className={metricCardClass}>
@@ -50,120 +131,75 @@ export default function Anggaran() {
             <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><TrendingDownIcon /></span>
             Terpakai
           </div>
-          <div className={metricValueClass}>Rp2.951.000</div>
-          <div className="text-[12px] text-text-tertiary mt-1">65.6% dari total budget</div>
+          <div className={metricValueClass}>{formatRp(totalUsed)}</div>
+          <div className="text-[12px] text-text-tertiary mt-1">{totalPct.toFixed(1)}% dari total budget</div>
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
             <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><CheckIcon /></span>
             Sisa
           </div>
-          <div className={metricValueClass}>Rp1.549.000</div>
-          <div className="text-[12px] text-text-tertiary mt-1">34.4% tersisa</div>
+          <div className={metricValueClass}>{formatRp(Math.max(0, totalLimit - totalUsed))}</div>
+          <div className="text-[12px] text-text-tertiary mt-1">{Math.max(0, 100 - totalPct).toFixed(1)}% tersisa</div>
         </article>
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Daftar anggaran per kategori">
-        <div className={budgetCardClass}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className={budgetIconClass} aria-hidden="true">
-                <CoffeeIcon />
-              </div>
-              <div>
-                <div className="text-[15px] font-semibold text-text-primary">Makanan</div>
-                <div className="text-[12px] text-text-tertiary mt-0.5">Terpakai Rp1.148.000</div>
-              </div>
-            </div>
-            <div className="flex flex-col items-end">
-              <label htmlFor="limit-makanan" className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Limit</label>
-              <input type="text" id="limit-makanan" defaultValue="1.200.000" inputMode="numeric" className={budgetInputClass} />
-            </div>
-          </div>
-          <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-3">
-            <div className="h-full rounded-full transition-all duration-500 ease-out bg-danger" style={{width: '95.7%'}}></div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-medium text-text-secondary font-mono">Rp1.148.000 / Rp1.200.000</span>
-            <span className="text-[12px] font-bold font-mono text-danger">95.7%</span>
-          </div>
-        </div>
+        {isLoading ? (
+          <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Memuat anggaran...</div>
+        ) : budgetData.length === 0 ? (
+           <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Belum ada kategori anggaran.</div>
+        ) : budgetData.map((b) => {
+          const isDanger = b.pct >= 90;
+          const isWarning = b.pct >= 75 && !isDanger;
+          const colorClass = isDanger ? 'bg-danger' : isWarning ? 'bg-warning' : 'bg-primary';
+          const textClass = isDanger ? 'text-danger' : isWarning ? 'text-warning' : 'text-primary';
 
-        <div className={budgetCardClass}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className={budgetIconClass} aria-hidden="true">
-                <TruckIcon />
+          return (
+            <div key={b.category} className={budgetCardClass}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={budgetIconClass} aria-hidden="true">
+                    {getIconForCategory(b.category)}
+                  </div>
+                  <div>
+                    <div className="text-[15px] font-semibold text-text-primary capitalize">{b.category}</div>
+                    <div className="text-[12px] text-text-tertiary mt-0.5">Terpakai {formatRp(b.used)}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end">
+                  <label htmlFor={`limit-${b.category}`} className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Limit (Rp)</label>
+                  <input 
+                    type="number" 
+                    id={`limit-${b.category}`} 
+                    value={limits[b.category] || ""} 
+                    placeholder="0"
+                    onChange={(e) => setLimits({...limits, [b.category]: Number(e.target.value)})}
+                    onBlur={(e) => handleSaveLimit(b.category, Number(e.target.value))}
+                    className={budgetInputClass} 
+                  />
+                </div>
               </div>
-              <div>
-                <div className="text-[15px] font-semibold text-text-primary">Transportasi</div>
-                <div className="text-[12px] text-text-tertiary mt-0.5">Terpakai Rp721.600</div>
+              <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-3">
+                <div className={`h-full rounded-full transition-all duration-500 ease-out ${colorClass}`} style={{width: `${b.pct}%`}}></div>
               </div>
-            </div>
-            <div className="flex flex-col items-end">
-              <label htmlFor="limit-transportasi" className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Limit</label>
-              <input type="text" id="limit-transportasi" defaultValue="800.000" inputMode="numeric" className={budgetInputClass} />
-            </div>
-          </div>
-          <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-3">
-            <div className="h-full rounded-full transition-all duration-500 ease-out bg-danger" style={{width: '90.2%'}}></div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-medium text-text-secondary font-mono">Rp721.600 / Rp800.000</span>
-            <span className="text-[12px] font-bold font-mono text-danger">90.2%</span>
-          </div>
-        </div>
-
-        <div className={budgetCardClass}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className={budgetIconClass} aria-hidden="true">
-                <BookIcon />
-              </div>
-              <div>
-                <div className="text-[15px] font-semibold text-text-primary">Langganan</div>
-                <div className="text-[12px] text-text-tertiary mt-0.5">Terpakai Rp590.400</div>
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] font-medium text-text-secondary font-mono">{formatRp(b.used)} / {formatRp(b.limit)}</span>
+                <span className={`text-[12px] font-bold font-mono ${textClass}`}>{b.pct.toFixed(1)}%</span>
               </div>
             </div>
-            <div className="flex flex-col items-end">
-              <label htmlFor="limit-langganan" className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Limit</label>
-              <input type="text" id="limit-langganan" defaultValue="1.000.000" inputMode="numeric" className={budgetInputClass} />
-            </div>
-          </div>
-          <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-3">
-            <div className="h-full rounded-full transition-all duration-500 ease-out bg-success" style={{width: '59%'}}></div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-medium text-text-secondary font-mono">Rp590.400 / Rp1.000.000</span>
-            <span className="text-[12px] font-bold font-mono text-success">59.0%</span>
-          </div>
-        </div>
-
-        <div className={budgetCardClass}>
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className={budgetIconClass} aria-hidden="true">
-                <CartIcon />
-              </div>
-              <div>
-                <div className="text-[15px] font-semibold text-text-primary">Belanja</div>
-                <div className="text-[12px] text-text-tertiary mt-0.5">Terpakai Rp492.000</div>
-              </div>
-            </div>
-            <div className="flex flex-col items-end">
-              <label htmlFor="limit-belanja" className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Limit</label>
-              <input type="text" id="limit-belanja" defaultValue="1.500.000" inputMode="numeric" className={budgetInputClass} />
-            </div>
-          </div>
-          <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-3">
-            <div className="h-full rounded-full transition-all duration-500 ease-out bg-success" style={{width: '32.8%'}}></div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-medium text-text-secondary font-mono">Rp492.000 / Rp1.500.000</span>
-            <span className="text-[12px] font-bold font-mono text-success">32.8%</span>
-          </div>
-        </div>
+          )
+        })}
       </section>
+
+      {toast && (
+        <div className="fixed top-6 right-6 z-[200] animate-slide-in-right">
+          <div className="bg-surface border border-success/20 text-success px-6 py-3.5 rounded-xl shadow-[0_4px_12px_rgba(22,163,74,0.1)] flex items-center gap-3 text-[14.5px] font-medium">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-.997-6l7.07-7.071-1.414-1.414-5.656 5.657-2.829-2.829-1.414 1.414L11.003 16z"/></svg>
+            {toast}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

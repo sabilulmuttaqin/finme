@@ -1,6 +1,25 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { UserIcon, EditIcon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ProfilPengaturan() {
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      // In a real app we'd get the auth session. For this MVP where users might 
+      // be created via Telegram, we'll fetch the first user from the users table.
+      const { data } = await supabase.from('users').select('*').limit(1).single();
+      if (data) setUser(data);
+      setIsLoading(false);
+    };
+    fetchUser();
+  }, []);
+
   const cardClass = "bg-surface border border-border rounded-xl";
   const cardHeaderClass = "px-5 py-4 border-b border-border";
   const cardTitleClass = "text-[16px] font-semibold text-text-primary flex items-center gap-2";
@@ -31,20 +50,29 @@ export default function ProfilPengaturan() {
               </div>
             </div>
             <div className={settingFieldsClass}>
-              <div className={formRowClass}>
-                <div className={formGroupClass}>
-                  <label className={formLabelClass} htmlFor="email">Email</label>
-                  <input type="email" id="email" className={formInputReadOnlyClass} defaultValue="user@finme.id" readOnly />
-                </div>
-                <button className={btnGhostClass} type="button" aria-label="Edit email">
-                  <EditIcon aria-hidden="true" />
-                  Edit
-                </button>
-              </div>
-              <div className={formGroupClass}>
-                <label className={formLabelClass} htmlFor="nama">Nama</label>
-                <input type="text" id="nama" className={formInputClass} defaultValue="Ahmad Fauzi" />
-              </div>
+              {isLoading ? (
+                <div className="text-[13px] text-text-tertiary">Memuat profil...</div>
+              ) : user ? (
+                <>
+                  <div className={formRowClass}>
+                    <div className={formGroupClass}>
+                      <label className={formLabelClass} htmlFor="email">Email</label>
+                      <input type="email" id="email" className={formInputReadOnlyClass} defaultValue={user.email} readOnly />
+                    </div>
+                    <button className={btnGhostClass} type="button" aria-label="Edit email">
+                      <EditIcon aria-hidden="true" />
+                      Edit
+                    </button>
+                  </div>
+                  <div className={formGroupClass}>
+                    <label className={formLabelClass} htmlFor="telegram">Telegram Chat ID</label>
+                    <input type="text" id="telegram" className={formInputReadOnlyClass} defaultValue={user.telegram_chat_id || "Belum terhubung"} readOnly />
+                    <p className="text-[11px] text-text-tertiary mt-1">Digunakan untuk integrasi Bot Telegram.</p>
+                  </div>
+                </>
+              ) : (
+                <div className="text-[13px] text-text-tertiary">Data profil tidak ditemukan.</div>
+              )}
             </div>
           </section>
         </div>

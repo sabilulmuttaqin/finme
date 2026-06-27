@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, TrendingUpIcon, LaptopIcon, HomeIcon, HeartIcon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 
 const COLORS = [
   "#FF6B00", "#FF8A33", "#FFB366", "#DC2626", "#16A34A",
@@ -19,11 +20,14 @@ const ICONS = [
   { id: "heart", svg: <HeartIcon /> },
 ];
 
-export default function AddCategoryModal({ isOpen, onClose, initialData }: { isOpen: boolean, onClose: () => void, initialData?: { name: string } | null }) {
+export default function AddCategoryModal({ isOpen, onClose, initialData }: { isOpen: boolean, onClose: (successMsg?: string) => void, initialData?: { name: string } | null }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [selectedIcon, setSelectedIcon] = useState(ICONS[0].id);
   const [name, setName] = useState("");
+  const [type, setType] = useState("expense");
+  const [isSaving, setIsSaving] = useState(false);
+  const supabase = createClient();
 
   // Shared classes
   const formGroupClass = "flex flex-col gap-1.5 mb-4";
@@ -51,19 +55,56 @@ export default function AddCategoryModal({ isOpen, onClose, initialData }: { isO
       <div className="bg-surface rounded-2xl w-full max-w-[520px] shadow-lg transform transition-transform duration-200 translate-y-0 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pt-5 px-6 pb-0">
           <h2 id="modalTitle" className="text-[17px] font-semibold">{initialData ? 'Edit Kategori' : 'Tambah Kategori'}</h2>
-          <button className="w-9 h-9 rounded-sm flex items-center justify-center text-text-tertiary transition-colors duration-150 hover:bg-surface-secondary hover:text-text-primary border-none bg-transparent cursor-pointer" onClick={onClose} aria-label="Tutup modal">
+          <button className="w-9 h-9 rounded-sm flex items-center justify-center text-text-tertiary transition-colors duration-150 hover:bg-surface-secondary hover:text-text-primary border-none bg-transparent cursor-pointer" onClick={() => onClose()} aria-label="Tutup modal">
             <CloseIcon className="w-[18px] h-[18px]" />
           </button>
         </div>
         <div className="pt-5 px-6 pb-6">
-          <form aria-label="Form kategori" onSubmit={(e) => { e.preventDefault(); onClose(); }}>
+          <form aria-label="Form kategori" onSubmit={async (e) => {
+            e.preventDefault();
+            setIsSaving(true);
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) throw new Error("User not found");
+
+              if (initialData) {
+                const { error } = await supabase.from('categories').update({
+                  name: name.toLowerCase(),
+                  type,
+                  color: selectedColor,
+                  icon: selectedIcon
+                }).eq('user_id', user.id).eq('name', initialData.name.toLowerCase());
+                if (error) throw error;
+                onClose("Kategori berhasil diperbarui!");
+              } else {
+                const { error } = await supabase.from('categories').insert([{
+                  user_id: user.id,
+                  name: name.toLowerCase(),
+                  type,
+                  color: selectedColor,
+                  icon: selectedIcon
+                }]);
+                if (error) throw error;
+                onClose("Kategori berhasil ditambahkan!");
+              }
+            } catch (err: any) {
+              alert("Gagal menyimpan kategori: " + err.message);
+            } finally {
+              setIsSaving(false);
+            }
+          }}>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="cat-name">Nama Kategori <span className="text-danger" aria-label="wajib diisi">*</span></label>
               <input ref={inputRef} className={formInputClass} type="text" id="cat-name" placeholder="Contoh: Hiburan" required value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="cat-type">Tipe</label>
-              <select className={`${formInputClass} appearance-none bg-[url('data:image/svg+xml,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_width=%2216%22_height=%2216%22_viewBox=%220_0_24_24%22_fill=%22none%22_stroke=%22%2357534E%22_stroke-width=%222%22_stroke-linecap=%22round%22_stroke-linejoin=%22round%22%3E%3Cpolyline_points=%226_9_12_15_18_9%22%3E%3C/polyline%3E%3C/svg%3E')] bg-no-repeat bg-[position:right_10px_center] pr-8`} id="cat-type">
+              <select 
+                className={`${formInputClass} appearance-none bg-[url('data:image/svg+xml,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_width=%2216%22_height=%2216%22_viewBox=%220_0_24_24%22_fill=%22none%22_stroke=%22%2357534E%22_stroke-width=%222%22_stroke-linecap=%22round%22_stroke-linejoin=%22round%22%3E%3Cpolyline_points=%226_9_12_15_18_9%22%3E%3C/polyline%3E%3C/svg%3E')] bg-no-repeat bg-[position:right_10px_center] pr-8`} 
+                id="cat-type"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              >
                 <option value="expense">Pengeluaran</option>
                 <option value="income">Pemasukan</option>
                 <option value="all">Semua</option>
@@ -103,8 +144,10 @@ export default function AddCategoryModal({ isOpen, onClose, initialData }: { isO
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
-              <button className={`${btnClass} bg-surface border border-border text-text-secondary hover:bg-surface-secondary hover:text-text-primary`} type="button" onClick={onClose}>Batal</button>
-              <button className={`${btnClass} bg-primary text-white border-none hover:bg-primary-dark`} type="submit">Simpan</button>
+              <button className={`${btnClass} bg-surface border border-border text-text-secondary hover:bg-surface-secondary hover:text-text-primary`} type="button" onClick={() => onClose()} disabled={isSaving}>Batal</button>
+              <button className={`${btnClass} bg-primary text-white border-none hover:bg-primary-dark`} type="submit" disabled={isSaving}>
+                {isSaving ? "Menyimpan..." : "Simpan"}
+              </button>
             </div>
           </form>
         </div>

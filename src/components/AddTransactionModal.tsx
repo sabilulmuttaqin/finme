@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 
-export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boolean, onClose: (msg?: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [desc, setDesc] = useState("");
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState("expense");
+  const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState<{name: string, type: string}[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const supabase = createClient();
 
   // Shared classes
   const formGroupClass = "flex flex-col gap-1";
@@ -14,10 +22,54 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
   const selectClass = `${formInputClass} appearance-none bg-[url('data:image/svg+xml,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_width=%2216%22_height=%2216%22_viewBox=%220_0_24_24%22_fill=%22none%22_stroke=%22%2357534E%22_stroke-width=%222%22_stroke-linecap=%22round%22_stroke-linejoin=%22round%22%3E%3Cpolyline_points=%226_9_12_15_18_9%22%3E%3C/polyline%3E%3C/svg%3E')] bg-no-repeat bg-[position:right_10px_center] pr-8`;
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 200);
+    if (isOpen) {
+      setDesc("");
+      setAmount("");
+      setType("expense");
+      setCategory("");
+      
+      const fetchCategories = async () => {
+        const { data } = await supabase.from('categories').select('name, type');
+        if (data && data.length > 0) {
+          setCategories(data);
+          const first = data.find(c => c.type === 'expense' || c.type === 'all');
+          if (first) setCategory(first.name);
+        }
+      };
+      
+      fetchCategories();
+      if (inputRef.current) {
+        setTimeout(() => inputRef.current?.focus(), 200);
+      }
     }
   }, [isOpen]);
+
+  const filteredCategories = categories.filter(c => c.type === type || c.type === 'all');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not found");
+
+      const { error } = await supabase.from('transactions').insert([{
+        user_id: user.id,
+        description: desc,
+        amount: Number(amount),
+        type,
+        category: category || "lainnya",
+        is_manual_web: true
+      }]);
+
+      if (error) throw error;
+      onClose("Transaksi manual berhasil ditambahkan!");
+    } catch (err: any) {
+      alert("Gagal menambah transaksi: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -28,7 +80,7 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
       <div className="bg-surface rounded-2xl w-full max-w-[480px] shadow-lg transform transition-transform duration-200 translate-y-0 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pt-5 px-6 pb-0">
           <h2 id="modalTitle" className="text-[17px] font-semibold">Tambah Transaksi Manual</h2>
-          <button className="w-9 h-9 rounded-sm flex items-center justify-center text-text-tertiary transition-colors duration-150 hover:bg-surface-secondary hover:text-text-primary border-none bg-transparent cursor-pointer" onClick={onClose} aria-label="Tutup modal">
+          <button className="w-9 h-9 rounded-sm flex items-center justify-center text-text-tertiary transition-colors duration-150 hover:bg-surface-secondary hover:text-text-primary border-none bg-transparent cursor-pointer" onClick={() => onClose()} aria-label="Tutup modal">
             <CloseIcon className="w-[18px] h-[18px]" />
           </button>
         </div>
@@ -37,35 +89,41 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warning-surface text-warning uppercase tracking-[0.04em]">Terisolasi</span>
             Data ini tidak memengaruhi saldo utama
           </div>
-          <form className="grid grid-cols-2 gap-3" aria-label="Form input transaksi manual" onSubmit={(e) => { e.preventDefault(); onClose(); }}>
+          <form className="grid grid-cols-2 gap-3" aria-label="Form input transaksi manual" onSubmit={handleSubmit}>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="modal-desc">Deskripsi <span className="text-danger" aria-label="wajib diisi">*</span></label>
-              <input ref={inputRef} className={formInputClass} type="text" id="modal-desc" placeholder="Contoh: Makan siang" required />
+              <input ref={inputRef} className={formInputClass} type="text" id="modal-desc" placeholder="Contoh: Makan siang" value={desc} onChange={(e) => setDesc(e.target.value)} required />
             </div>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="modal-amount">Nominal <span className="text-danger" aria-label="wajib diisi">*</span></label>
-              <input className={formInputClass} type="number" id="modal-amount" placeholder="50000" inputMode="numeric" required />
+              <input className={formInputClass} type="number" id="modal-amount" placeholder="50000" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} required />
             </div>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="modal-type">Tipe</label>
-              <select className={selectClass} id="modal-type">
+              <select className={selectClass} id="modal-type" value={type} onChange={(e) => {
+                setType(e.target.value);
+                const newFirst = categories.find(c => c.type === e.target.value || c.type === 'all');
+                if (newFirst) setCategory(newFirst.name);
+              }}>
                 <option value="expense">Pengeluaran</option>
                 <option value="income">Pemasukan</option>
               </select>
             </div>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="modal-category">Kategori</label>
-              <select className={selectClass} id="modal-category">
-                <option value="makanan">Makanan</option>
-                <option value="transportasi">Transportasi</option>
-                <option value="langganan">Langganan</option>
-                <option value="belanja">Belanja</option>
-                <option value="lainnya">Lainnya</option>
+              <select className={selectClass} id="modal-category" value={category} onChange={(e) => setCategory(e.target.value)}>
+                {filteredCategories.length > 0 ? filteredCategories.map(c => (
+                  <option key={c.name} value={c.name} className="capitalize">{c.name}</option>
+                )) : (
+                  <option value="lainnya">Lainnya</option>
+                )}
               </select>
             </div>
             <div className="col-span-full flex justify-end gap-2 mt-1">
-              <button className={`${btnClass} bg-surface border border-border text-text-secondary hover:bg-surface-secondary hover:text-text-primary`} type="button" onClick={onClose}>Batal</button>
-              <button className={`${btnClass} bg-primary text-white border-none hover:bg-primary-dark`} type="submit">Simpan</button>
+              <button className={`${btnClass} bg-surface border border-border text-text-secondary hover:bg-surface-secondary hover:text-text-primary`} type="button" onClick={() => onClose()} disabled={isSaving}>Batal</button>
+              <button className={`${btnClass} bg-primary text-white border-none hover:bg-primary-dark`} type="submit" disabled={isSaving}>
+                {isSaving ? "Menyimpan..." : "Simpan"}
+              </button>
             </div>
           </form>
         </div>
