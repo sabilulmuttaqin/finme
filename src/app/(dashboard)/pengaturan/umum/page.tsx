@@ -99,7 +99,7 @@ export default function UmumPengaturan() {
   const btnGhostClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-transparent text-text-secondary hover:bg-surface-secondary hover:text-text-primary [&>svg]:w-4 [&>svg]:h-4";
   const btnDangerGhostClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-danger-surface text-danger hover:bg-danger hover:text-white border-transparent [&>svg]:w-4 [&>svg]:h-4";
   const btnDangerClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-danger text-white hover:bg-[#DC2626] border-danger shadow-[0_1px_2px_rgba(239,68,68,0.1)] hover:shadow-[0_4px_12px_rgba(239,68,68,0.2)] [&>svg]:w-4 [&>svg]:h-4";
-  const btnPrimaryClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-white hover:bg-primary-hover shadow-sm";
+  const btnPrimaryClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-white hover:bg-primary-hover shadow-sm [&>svg]:w-4 [&>svg]:h-4";
 
   if (isLoading) {
     return <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8 text-text-secondary text-[13px]">Memuat pengaturan...</main>;
