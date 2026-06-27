@@ -1,60 +1,52 @@
 import Link from "next/link";
 
 export default function Login() {
+  const cardClass = "bg-surface border border-border rounded-xl w-full max-w-[420px] p-8";
+  const formLabelClass = "text-[13px] font-medium text-text-secondary";
+  const formInputClass = "bg-surface-secondary border border-border rounded-lg px-4 py-2.5 text-[14px] text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full";
+  const btnPrimaryClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-primary-content hover:bg-[#5b3df5] border-transparent shadow-[0_1px_2px_rgba(108,93,211,0.1)] hover:shadow-[0_4px_12px_rgba(108,93,211,0.25)] flex w-full justify-center min-h-[44px] mb-6";
+
   return (
-    <div style={{
-      minHeight: '100dvh',
-      width: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      padding: '24px'
-    }}>
-      <div className="card" style={{
-        width: '100%',
-        maxWidth: '420px',
-        padding: '32px'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-bg p-6">
+      <div className={cardClass}>
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center gap-2.5">
             <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-              <rect width="28" height="28" rx="8" fill="var(--primary)"/>
+              <rect width="28" height="28" rx="8" fill="var(--color-primary)"/>
               <path d="M8 10h12M8 14h8M8 18h10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            <span style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-              Fin<span style={{ color: 'var(--primary)' }}>Me</span>
+            <span className="text-[24px] font-bold tracking-[-0.02em] text-text-primary">
+              Fin<span className="text-primary">Me</span>
             </span>
           </div>
         </div>
         
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Selamat Datang Kembali</h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Masuk untuk melanjutkan ke dashboard Anda</p>
+        <div className="text-center mb-8">
+          <h1 className="text-[20px] font-semibold text-text-primary mb-1">Selamat Datang Kembali</h1>
+          <p className="text-[14px] text-text-secondary">Masuk untuk melanjutkan ke dashboard Anda</p>
         </div>
 
         <form>
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label className="form-label" htmlFor="email">Email</label>
-            <input type="email" id="email" className="form-input" placeholder="nama@email.com" required />
+          <div className="flex flex-col gap-2 mb-4">
+            <label className={formLabelClass} htmlFor="email">Email</label>
+            <input type="email" id="email" className={formInputClass} placeholder="nama@email.com" required />
           </div>
           
-          <div className="form-group" style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label" htmlFor="password">Kata Sandi</label>
-              <a href="#" style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 500 }}>Lupa kata sandi?</a>
+          <div className="flex flex-col gap-2 mb-6">
+            <div className="flex justify-between items-center">
+              <label className={formLabelClass} htmlFor="password">Kata Sandi</label>
+              <a href="#" className="text-[12px] text-primary font-medium hover:underline">Lupa kata sandi?</a>
             </div>
-            <input type="password" id="password" className="form-input" placeholder="••••••••" required />
+            <input type="password" id="password" className={formInputClass} placeholder="••••••••" required />
           </div>
 
-          <Link href="/dashboard" className="btn btn-primary" style={{ display: 'flex', width: '100%', justifyContent: 'center', minHeight: '44px', fontSize: '14px', marginBottom: '24px' }}>
+          <Link href="/dashboard" className={btnPrimaryClass}>
             Masuk
           </Link>
         </form>
 
-        <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Belum punya akun? <a href="#" style={{ color: 'var(--primary)', fontWeight: 500 }}>Daftar sekarang</a>
+        <div className="text-center text-[13px] text-text-secondary">
+          Belum punya akun? <a href="#" className="text-primary font-medium hover:underline">Daftar sekarang</a>
         </div>
       </div>
     </div>

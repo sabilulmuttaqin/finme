@@ -1,39 +1,50 @@
 export default function ProfilPengaturan() {
-  return (
-    <main className="main" id="main-content">
-      <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-        <header className="header">
-        <div className="header-left">
-          <h1>Pengaturan Profil</h1>
-          <p>Konfigurasi detail akun pribadi Anda</p>
-        </div>
-      </header>
+  const cardClass = "bg-surface border border-border rounded-xl";
+  const cardHeaderClass = "px-5 py-4 border-b border-border";
+  const cardTitleClass = "text-[16px] font-semibold text-text-primary flex items-center gap-2";
+  const settingFieldsClass = "p-5 flex flex-col gap-5";
+  const formRowClass = "flex flex-col md:flex-row gap-4 items-start md:items-end";
+  const formGroupClass = "flex flex-col gap-2 flex-1 w-full";
+  const formLabelClass = "text-[13px] font-medium text-text-secondary";
+  const formInputClass = "bg-surface-secondary border border-border rounded-lg px-4 py-2.5 text-[14px] text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all";
+  const formInputReadOnlyClass = `${formInputClass} !bg-surface !border-transparent opacity-80 cursor-default focus:!border-transparent focus:!ring-0`;
+  const btnGhostClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-transparent text-text-secondary hover:bg-surface-secondary hover:text-text-primary [&>svg]:w-4 [&>svg]:h-4";
 
-      <div className="settings-wrap">
-        <section className="card" aria-label="Profil">
-          <div className="card-header">
-            <div className="card-title" style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: '18px', height: '18px', color: 'var(--text-tertiary)'}} aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Profil Utama
-            </div>
+  return (
+    <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8" id="main-content">
+      <div className="max-w-[800px] mx-auto w-full">
+        <header className="flex items-center justify-between mb-8 gap-4 flex-wrap">
+          <div>
+            <h1 className="text-[24px] font-bold tracking-[-0.02em]">Pengaturan Profil</h1>
+            <p className="text-[13px] text-text-secondary mt-0.5">Konfigurasi detail akun pribadi Anda</p>
           </div>
-          <div className="setting-fields">
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label" htmlFor="email">Email</label>
-                <input type="email" id="email" className="form-input" defaultValue="user@finme.id" readOnly />
+        </header>
+
+        <div className="flex flex-col gap-6 w-full">
+          <section className={cardClass} aria-label="Profil">
+            <div className={cardHeaderClass}>
+              <div className={cardTitleClass}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] text-text-tertiary" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Profil Utama
               </div>
-              <button className="btn btn-ghost" type="button" aria-label="Edit email">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Edit
-              </button>
             </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="nama">Nama</label>
-              <input type="text" id="nama" className="form-input" defaultValue="Ahmad Fauzi" />
+            <div className={settingFieldsClass}>
+              <div className={formRowClass}>
+                <div className={formGroupClass}>
+                  <label className={formLabelClass} htmlFor="email">Email</label>
+                  <input type="email" id="email" className={formInputReadOnlyClass} defaultValue="user@finme.id" readOnly />
+                </div>
+                <button className={btnGhostClass} type="button" aria-label="Edit email">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edit
+                </button>
+              </div>
+              <div className={formGroupClass}>
+                <label className={formLabelClass} htmlFor="nama">Nama</label>
+                <input type="text" id="nama" className={formInputClass} defaultValue="Ahmad Fauzi" />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
         </div>
       </div>
     </main>

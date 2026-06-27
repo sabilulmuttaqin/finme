@@ -24,6 +24,12 @@ export default function AddCategoryModal({ isOpen, onClose, initialData }: { isO
   const [selectedIcon, setSelectedIcon] = useState(ICONS[0].id);
   const [name, setName] = useState("");
 
+  // Shared classes
+  const formGroupClass = "flex flex-col gap-1.5 mb-4";
+  const formLabelClass = "text-[12px] font-medium text-text-secondary";
+  const formInputClass = "px-3 py-2.5 border border-border rounded-sm text-[13px] bg-surface text-text-primary transition-colors duration-150 min-h-[44px] focus:outline-none focus:border-primary focus:ring-[3px] focus:ring-primary-surface placeholder:text-text-tertiary";
+  const btnClass = "inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-sm text-[13px] font-medium transition-colors duration-150 min-h-[44px] cursor-pointer";
+
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
@@ -38,38 +44,38 @@ export default function AddCategoryModal({ isOpen, onClose, initialData }: { isO
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay open" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onClick={(e) => {
+    <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4 transition-opacity duration-200 opacity-100" role="dialog" aria-modal="true" aria-labelledby="modalTitle" onClick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}>
-      <div className="modal">
-        <div className="modal-header">
-          <h2 id="modalTitle">{initialData ? 'Edit Kategori' : 'Tambah Kategori'}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Tutup modal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <div className="bg-surface rounded-2xl w-full max-w-[520px] shadow-lg transform transition-transform duration-200 translate-y-0 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between pt-5 px-6 pb-0">
+          <h2 id="modalTitle" className="text-[17px] font-semibold">{initialData ? 'Edit Kategori' : 'Tambah Kategori'}</h2>
+          <button className="w-9 h-9 rounded-sm flex items-center justify-center text-text-tertiary transition-colors duration-150 hover:bg-surface-secondary hover:text-text-primary border-none bg-transparent cursor-pointer" onClick={onClose} aria-label="Tutup modal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <div className="modal-body">
+        <div className="pt-5 px-6 pb-6">
           <form aria-label="Form kategori" onSubmit={(e) => { e.preventDefault(); onClose(); }}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="cat-name">Nama Kategori <span style={{color: 'var(--danger)'}} aria-label="wajib diisi">*</span></label>
-              <input ref={inputRef} className="form-input" type="text" id="cat-name" placeholder="Contoh: Hiburan" required value={name} onChange={e => setName(e.target.value)} />
+            <div className={formGroupClass}>
+              <label className={formLabelClass} htmlFor="cat-name">Nama Kategori <span className="text-danger" aria-label="wajib diisi">*</span></label>
+              <input ref={inputRef} className={formInputClass} type="text" id="cat-name" placeholder="Contoh: Hiburan" required value={name} onChange={e => setName(e.target.value)} />
             </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="cat-type">Tipe</label>
-              <select className="form-input" id="cat-type">
+            <div className={formGroupClass}>
+              <label className={formLabelClass} htmlFor="cat-type">Tipe</label>
+              <select className={`${formInputClass} appearance-none bg-[url('data:image/svg+xml,%3Csvg_xmlns=%22http://www.w3.org/2000/svg%22_width=%2216%22_height=%2216%22_viewBox=%220_0_24_24%22_fill=%22none%22_stroke=%22%2357534E%22_stroke-width=%222%22_stroke-linecap=%22round%22_stroke-linejoin=%22round%22%3E%3Cpolyline_points=%226_9_12_15_18_9%22%3E%3C/polyline%3E%3C/svg%3E')] bg-no-repeat bg-[position:right_10px_center] pr-8`} id="cat-type">
                 <option value="expense">Pengeluaran</option>
                 <option value="income">Pemasukan</option>
                 <option value="all">Semua</option>
               </select>
             </div>
-            <div className="form-group">
-              <label className="form-label">Warna</label>
-              <div className="color-picker" role="radiogroup" aria-label="Pilih warna kategori">
+            <div className={formGroupClass}>
+              <label className={formLabelClass}>Warna</label>
+              <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Pilih warna kategori">
                 {COLORS.map((color, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    className={`color-option ${selectedColor === color ? 'selected' : ''}`}
+                    className={`w-8 h-8 rounded-full border-2 cursor-pointer transition-transform duration-150 relative hover:scale-110 ${selectedColor === color ? 'border-text-primary shadow-[0_0_0_2px_var(--color-surface),0_0_0_4px_var(--color-text-primary)] after:content-[\'\'] after:absolute after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:w-2.5 after:h-2.5 after:rounded-full after:bg-surface' : 'border-transparent'}`}
                     style={{background: color}}
                     role="radio"
                     aria-checked={selectedColor === color}
@@ -78,14 +84,14 @@ export default function AddCategoryModal({ isOpen, onClose, initialData }: { isO
                 ))}
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Ikon</label>
-              <div className="icon-grid" role="radiogroup" aria-label="Pilih ikon kategori">
+            <div className={formGroupClass}>
+              <label className={formLabelClass}>Ikon</label>
+              <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Pilih ikon kategori">
                 {ICONS.map((icon) => (
                   <button
                     key={icon.id}
                     type="button"
-                    className={`icon-option ${selectedIcon === icon.id ? 'selected' : ''}`}
+                    className={`w-full aspect-square rounded-sm border-2 flex items-center justify-center cursor-pointer transition-colors duration-150 [&>svg]:w-5 [&>svg]:h-5 ${selectedIcon === icon.id ? 'border-primary text-primary bg-primary-surface' : 'border-border text-text-secondary hover:border-primary-light hover:text-primary hover:bg-primary-surface'}`}
                     role="radio"
                     aria-checked={selectedIcon === icon.id}
                     onClick={() => setSelectedIcon(icon.id)}
@@ -95,9 +101,9 @@ export default function AddCategoryModal({ isOpen, onClose, initialData }: { isO
                 ))}
               </div>
             </div>
-            <div className="form-actions">
-              <button className="btn btn-ghost" type="button" onClick={onClose}>Batal</button>
-              <button className="btn btn-primary" type="submit">Simpan</button>
+            <div className="flex justify-end gap-2 mt-5">
+              <button className={`${btnClass} bg-surface border border-border text-text-secondary hover:bg-surface-secondary hover:text-text-primary`} type="button" onClick={onClose}>Batal</button>
+              <button className={`${btnClass} bg-primary text-white border-none hover:bg-primary-dark`} type="submit">Simpan</button>
             </div>
           </form>
         </div>

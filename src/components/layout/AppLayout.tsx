@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className={`app-container ${isCollapsed ? 'layout-collapsed' : ''}`}>
+    <div className="flex flex-col w-full min-h-screen">
       <MobileHeader onOpenSidebar={toggleSidebar} />
       <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} isCollapsed={isCollapsed} onToggleCollapse={toggleCollapse} />
       {children}
