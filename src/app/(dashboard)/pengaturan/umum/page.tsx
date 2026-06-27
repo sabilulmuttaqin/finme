@@ -14,6 +14,9 @@ export default function UmumPengaturan() {
   const [dailyReminder, setDailyReminder] = useState(true);
   const [reminderTime, setReminderTime] = useState("21:00");
 
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -64,7 +67,8 @@ export default function UmumPengaturan() {
 
       if (error) throw error;
       
-      alert(`Kode OTP Telegram Anda: ${otp}\n\nKirim pesan berikut ke bot Telegram:\n/link ${otp}\n\n(Berlaku selama 10 menit)`);
+      setOtpCode(otp);
+      setShowOtpModal(true);
     } catch (err: any) {
       alert("Gagal men-generate OTP: " + err.message);
     }
@@ -215,6 +219,41 @@ export default function UmumPengaturan() {
           </section>
         </div>
       </div>
+
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4 transition-opacity duration-200" role="dialog" onClick={(e) => {
+          if (e.target === e.currentTarget) setShowOtpModal(false);
+        }}>
+          <div className="bg-surface rounded-2xl w-full max-w-[400px] shadow-lg overflow-hidden transform transition-transform duration-200 translate-y-0 scale-100">
+            <div className="flex items-center justify-between pt-5 px-6 pb-4 border-b border-border">
+              <h2 className="text-[17px] font-semibold text-text-primary">Hubungkan Telegram</h2>
+              <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-surface-secondary hover:text-text-primary transition-colors bg-transparent border-none cursor-pointer" onClick={() => setShowOtpModal(false)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div className="p-6 text-center">
+              <p className="text-[14px] text-text-secondary mb-4">
+                Kode sinkronisasi Anda:
+              </p>
+              <div className="bg-surface-secondary border border-border rounded-xl p-4 mb-4 flex justify-center items-center">
+                <span className="text-[32px] font-mono font-bold tracking-[0.2em] text-text-primary">{otpCode}</span>
+              </div>
+              <p className="text-[13px] text-text-tertiary mb-8">
+                Penting: Jangan tutup halaman ini sebelum Anda mengirim pesan ke bot. Kode ini hanya berlaku 10 menit.
+              </p>
+              <div className="flex flex-col gap-3 w-full">
+                <a href={`https://t.me/NAMA_BOT_ANDA?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass} onClick={() => setShowOtpModal(false)}>
+                  <MessageIcon className="w-4 h-4" />
+                  Lanjut ke Telegram
+                </a>
+                <button type="button" className={`${btnGhostClass} w-full`} onClick={() => setShowOtpModal(false)}>
+                  Nanti Saja
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
