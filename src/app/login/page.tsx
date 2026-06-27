@@ -7,7 +7,7 @@ export default function Login() {
   const btnPrimaryClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-primary-content hover:bg-[#5b3df5] border-transparent shadow-[0_1px_2px_rgba(108,93,211,0.1)] hover:shadow-[0_4px_12px_rgba(108,93,211,0.25)] flex w-full justify-center min-h-[44px] mb-6";
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-bg p-6">
+    <div className="min-h-dvh w-full flex flex-col items-center justify-center bg-bg p-6">
       <div className={cardClass}>
         <div className="flex justify-center mb-6">
           <div className="flex items-center gap-2.5">
