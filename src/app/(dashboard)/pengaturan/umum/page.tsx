@@ -167,7 +167,7 @@ export default function UmumPengaturan() {
                       Kirim pesan <code className="bg-surface px-1.5 py-0.5 rounded border border-border text-primary font-mono">/link {otpCode}</code> ke bot Telegram. Berlaku 10 menit.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      <a href={`https://t.me/@trackinguangsab_bot?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass}>
+                      <a href={`https://t.me/trackinguangsab_bot?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass}>
                         <MessageIcon className="w-4 h-4" />
                         Pergi ke Telegram
                       </a>
@@ -265,7 +265,7 @@ export default function UmumPengaturan() {
                 Penting: Jangan tutup halaman ini sebelum Anda mengirim pesan ke bot. Kode ini hanya berlaku 10 menit.
               </p>
               <div className="flex flex-col gap-3 w-full">
-                <a href={`https://t.me/@trackinguangsab_bot?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass} onClick={() => setShowOtpModal(false)}>
+                <a href={`https://t.me/trackinguangsab_bot?text=/link%20${otpCode}`} target="_blank" rel="noreferrer" className={btnPrimaryClass} onClick={() => setShowOtpModal(false)}>
                   <MessageIcon className="w-4 h-4" />
                   Lanjut ke Telegram
                 </a>

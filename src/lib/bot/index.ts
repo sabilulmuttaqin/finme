@@ -6,7 +6,7 @@ export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 bot.command("link", async (ctx) => {
   const chatId = ctx.chat.id.toString();
-  const otp = ctx.match;
+  const otp = ctx.match?.trim();
   
   if (!otp) {
     await ctx.reply("Silakan berikan kode OTP. Contoh: /link 123456");
