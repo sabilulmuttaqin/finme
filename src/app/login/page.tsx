@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogoIcon } from "@/components/icons";
 
 export default function Login() {
   const cardClass = "bg-surface border border-border rounded-xl w-full max-w-[420px] p-8";
@@ -11,10 +12,7 @@ export default function Login() {
       <div className={cardClass}>
         <div className="flex justify-center mb-6">
           <div className="flex items-center gap-2.5">
-            <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-              <rect width="28" height="28" rx="8" fill="var(--color-primary)"/>
-              <path d="M8 10h12M8 14h8M8 18h10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+            <BrandLogoIcon width="32" height="32" aria-hidden="true" />
             <span className="text-[24px] font-bold tracking-[-0.02em] text-text-primary">
               Fin<span className="text-primary">Me</span>
             </span>

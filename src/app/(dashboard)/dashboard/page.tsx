@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import AddTransactionModal from "@/components/AddTransactionModal";
+import dynamic from "next/dynamic";
+import { DownloadIcon, PlusIcon, WalletIcon, TrendingUpIcon, ArrowUpIcon, TrendingDownIcon, ArrowDownIcon, StarIcon, SettingsIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon } from "@/components/icons";
+
+const AddTransactionModal = dynamic(() => import("@/components/AddTransactionModal"), { ssr: false });
 
 export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,11 +39,11 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button className={btnGhost} type="button" aria-label="Ekspor laporan PDF">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <DownloadIcon className="w-4 h-4" aria-hidden="true" />
             Ekspor PDF
           </button>
           <button className={btnPrimary} type="button" onClick={() => setIsModalOpen(true)}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <PlusIcon className="w-4 h-4" aria-hidden="true" />
             Tambah Manual
           </button>
         </div>
@@ -49,27 +52,27 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" aria-label="Ringkasan finansial">
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span>
+            <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><WalletIcon /></span>
             Total Saldo
           </div>
           <div className={metricValueClass}>Rp12.450.000</div>
-          <div className={`${metricChangeClass} bg-success-surface text-success`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>+8.2% dari bulan lalu</div>
+          <div className={`${metricChangeClass} bg-success-surface text-success`}><ArrowUpIcon aria-hidden="true" />+8.2% dari bulan lalu</div>
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+            <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><TrendingUpIcon /></span>
             Pemasukan
           </div>
           <div className={metricValueClass}>Rp8.500.000</div>
-          <div className={`${metricChangeClass} bg-success-surface text-success`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg>+12.5% dari bulan lalu</div>
+          <div className={`${metricChangeClass} bg-success-surface text-success`}><ArrowUpIcon aria-hidden="true" />+12.5% dari bulan lalu</div>
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span>
+            <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><TrendingDownIcon /></span>
             Pengeluaran
           </div>
           <div className={metricValueClass}>Rp3.280.000</div>
-          <div className={`${metricChangeClass} bg-danger-surface text-danger`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>-4.1% dari bulan lalu</div>
+          <div className={`${metricChangeClass} bg-danger-surface text-danger`}><ArrowDownIcon aria-hidden="true" />-4.1% dari bulan lalu</div>
         </article>
       </section>
 
@@ -133,7 +136,7 @@ export default function Dashboard() {
       <section className="bg-linear-to-br from-[#1C1917] to-[#292524] border border-[#3a3633] rounded-xl p-6 text-[#FAFAF9] mb-6" aria-label="AI Weekly Insight">
         <div className="flex items-center justify-between mb-4">
           <div className="text-[16px] font-semibold flex items-center gap-2 text-[#FAFAF9] [&>svg]:text-primary">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <StarIcon width="18" height="18" aria-hidden="true" />
             Weekly Financial Insight
           </div>
           <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary-surface text-primary">AI Insight</span>
@@ -152,28 +155,28 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-5">
             <div><div className="text-[15px] font-semibold">Anggaran Bulanan</div><div className="text-[12px] text-text-tertiary font-normal">Progress per kategori</div></div>
             <Link href="/anggaran" className={`${btnGhost} px-3 py-1.5 min-h-[36px] text-[12px]`}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <SettingsIcon width="14" height="14" className="w-3.5 h-3.5" aria-hidden="true" />
               Atur Limit
             </Link>
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Makanan</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp1.148.000 / Rp1.200.000</span></div>
+              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><CoffeeIcon aria-hidden="true" />Makanan</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp1.148.000 / Rp1.200.000</span></div>
               <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-danger" style={{width: '95.7%'}}></div></div>
               <span className="text-[11px] font-medium text-right text-danger">95.7%</span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Transportasi</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp721.600 / Rp800.000</span></div>
+              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><TruckIcon aria-hidden="true" />Transportasi</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp721.600 / Rp800.000</span></div>
               <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-warning" style={{width: '90.2%'}}></div></div>
               <span className="text-[11px] font-medium text-right text-warning">90.2%</span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Langganan</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp590.400 / Rp1.000.000</span></div>
+              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><BookIcon aria-hidden="true" />Langganan</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp590.400 / Rp1.000.000</span></div>
               <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-primary" style={{width: '59%'}}></div></div>
               <span className="text-[11px] font-medium text-right text-primary">59.0%</span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>Belanja</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp492.000 / Rp1.500.000</span></div>
+              <div className="flex items-center justify-between text-[13px]"><span className="flex items-center gap-1.5 font-medium [&>svg]:w-3.5 [&>svg]:h-3.5 [&>svg]:text-text-tertiary"><CartIcon aria-hidden="true" />Belanja</span><span className="font-mono tabular-nums text-text-secondary text-[12px]">Rp492.000 / Rp1.500.000</span></div>
               <div className="h-2 bg-surface-secondary rounded-full overflow-hidden"><div className="h-full rounded-full transition-all duration-500 ease-out bg-primary" style={{width: '32.8%'}}></div></div>
               <span className="text-[11px] font-medium text-right text-primary">32.8%</span>
             </div>
@@ -187,32 +190,32 @@ export default function Dashboard() {
           </div>
           <div className="flex flex-col">
             <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div>
+              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><CoffeeIcon /></div>
               <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Kopi Starbucks</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Makanan</span><span aria-hidden="true">&middot;</span><span>Hari ini, 14:32</span></div></div>
               <div className={`${txAmountClass} text-danger`}>-Rp58.000</div>
             </div>
             <div className={txItemClass}>
-              <div className={`${txIconClass} bg-success-surface text-success`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+              <div className={`${txIconClass} bg-success-surface text-success`} aria-hidden="true"><TrendingUpIcon /></div>
               <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Gajian Masuk</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Pemasukan</span><span aria-hidden="true">&middot;</span><span>Hari ini, 09:00</span></div></div>
               <div className={`${txAmountClass} text-success`}>+Rp5.000.000</div>
             </div>
             <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><TruckIcon /></div>
               <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Bensin Pertamax</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Transportasi</span><span aria-hidden="true">&middot;</span><span>Kemarin, 17:45</span></div></div>
               <div className={`${txAmountClass} text-danger`}>-Rp80.000</div>
             </div>
             <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div>
+              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><CoffeeIcon /></div>
               <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Makan Siang McD</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Makanan</span><span aria-hidden="true">&middot;</span><span>Kemarin, 12:15</span></div></div>
               <div className={`${txAmountClass} text-danger`}>-Rp54.000</div>
             </div>
             <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><BookIcon /></div>
               <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Netflix Premium</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Langganan</span><span aria-hidden="true">&middot;</span><span>25 Jun, 00:01</span></div></div>
               <div className={`${txAmountClass} text-danger`}>-Rp186.000</div>
             </div>
             <div className={txItemClass}>
-              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div>
+              <div className={`${txIconClass} bg-danger-surface text-danger`} aria-hidden="true"><CartIcon /></div>
               <div className="flex-1 min-w-0"><div className="text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">Tokopedia - Kabel USB-C</div><div className="text-[11px] text-text-tertiary flex items-center gap-1.5 mt-px"><span>Belanja</span><span aria-hidden="true">&middot;</span><span>24 Jun, 20:30</span></div></div>
               <div className={`${txAmountClass} text-danger`}>-Rp45.000</div>
             </div>

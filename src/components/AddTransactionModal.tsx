@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { CloseIcon } from "@/components/icons";
 
 export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +29,7 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
         <div className="flex items-center justify-between pt-5 px-6 pb-0">
           <h2 id="modalTitle" className="text-[17px] font-semibold">Tambah Transaksi Manual</h2>
           <button className="w-9 h-9 rounded-sm flex items-center justify-center text-text-tertiary transition-colors duration-150 hover:bg-surface-secondary hover:text-text-primary border-none bg-transparent cursor-pointer" onClick={onClose} aria-label="Tutup modal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <CloseIcon className="w-[18px] h-[18px]" />
           </button>
         </div>
         <div className="pt-5 px-6 pb-6">

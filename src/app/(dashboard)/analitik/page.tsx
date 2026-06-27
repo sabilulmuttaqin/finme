@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ColumnChartIcon, TrendingDownIcon, WarningIcon, TrendingUpIcon } from "@/components/icons";
 
 export default function Analitik() {
   const [timeRange, setTimeRange] = useState("Bulan Ini");
@@ -38,7 +39,7 @@ export default function Analitik() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" aria-label="Metrik analitik">
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></span>
+            <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><ColumnChartIcon /></span>
             Rata-rata / Hari
           </div>
           <div className={metricValueClass}>Rp109.333</div>
@@ -46,7 +47,7 @@ export default function Analitik() {
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span>
+            <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><TrendingDownIcon /></span>
             Hari Tertinggi
           </div>
           <div className={metricValueClass}>Rp320.000</div>
@@ -54,7 +55,7 @@ export default function Analitik() {
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-warning-surface text-warning`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span className={`${iconCircleClass} bg-warning-surface text-warning`} aria-hidden="true"><WarningIcon /></span>
             Kategori Terboros
           </div>
           <div className={`${metricValueClass} text-[20px]`}>Makanan</div>
@@ -62,7 +63,7 @@ export default function Analitik() {
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+            <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><TrendingUpIcon /></span>
             Penghematan
           </div>
           <div className={`${metricValueClass} text-success`}>Rp142.000</div>

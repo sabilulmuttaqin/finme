@@ -1,5 +1,7 @@
 "use client";
 
+import { WalletIcon, TrendingDownIcon, CheckIcon, SaveIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon } from "@/components/icons";
+
 export default function Anggaran() {
   // Shared classes
   const metricCardClass = "bg-surface border border-border rounded-xl px-6 py-5 flex flex-col gap-2 transition-shadow duration-200 hover:shadow-md";
@@ -30,7 +32,7 @@ export default function Anggaran() {
             <option value="2026-03">Maret 2026</option>
           </select>
           <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-white hover:bg-primary-hover shadow-sm hover:shadow active:translate-y-px [&>svg]:w-4 [&>svg]:h-4" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <SaveIcon aria-hidden="true" />
             Simpan
           </button>
         </div>
@@ -39,7 +41,7 @@ export default function Anggaran() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" aria-label="Ringkasan anggaran">
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span>
+            <span className={`${iconCircleClass} bg-primary-surface text-primary`} aria-hidden="true"><WalletIcon /></span>
             Total Budget
           </div>
           <div className={metricValueClass}>Rp4.500.000</div>
@@ -47,7 +49,7 @@ export default function Anggaran() {
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span>
+            <span className={`${iconCircleClass} bg-danger-surface text-danger`} aria-hidden="true"><TrendingDownIcon /></span>
             Terpakai
           </div>
           <div className={metricValueClass}>Rp2.951.000</div>
@@ -55,7 +57,7 @@ export default function Anggaran() {
         </article>
         <article className={metricCardClass}>
           <div className={metricLabelClass}>
-            <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span className={`${iconCircleClass} bg-success-surface text-success`} aria-hidden="true"><CheckIcon /></span>
             Sisa
           </div>
           <div className={metricValueClass}>Rp1.549.000</div>
@@ -68,7 +70,7 @@ export default function Anggaran() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className={budgetIconClass} aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+                <CoffeeIcon />
               </div>
               <div>
                 <div className="text-[15px] font-semibold text-text-primary">Makanan</div>
@@ -93,7 +95,7 @@ export default function Anggaran() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className={budgetIconClass} aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                <TruckIcon />
               </div>
               <div>
                 <div className="text-[15px] font-semibold text-text-primary">Transportasi</div>
@@ -118,7 +120,7 @@ export default function Anggaran() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className={budgetIconClass} aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <BookIcon />
               </div>
               <div>
                 <div className="text-[15px] font-semibold text-text-primary">Langganan</div>
@@ -143,7 +145,7 @@ export default function Anggaran() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className={budgetIconClass} aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                <CartIcon />
               </div>
               <div>
                 <div className="text-[15px] font-semibold text-text-primary">Belanja</div>
