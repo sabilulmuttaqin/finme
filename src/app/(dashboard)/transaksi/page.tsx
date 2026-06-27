@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { TrendingUpIcon, TrendingDownIcon, SearchIcon, MessageIcon, InfoIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { FilterDropdown } from "@/components/FilterDropdown";
 
 export default function Transaksi() {
   const [activeTab, setActiveTab] = useState("Semua");
-
-  const btnGhostClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-transparent text-text-secondary hover:bg-surface-secondary hover:text-text-primary [&>svg]:w-4 [&>svg]:h-4";
-  const btnGhostActiveClass = "bg-surface-secondary text-text-primary font-semibold";
+  const [filterBulan, setFilterBulan] = useState("Juni 2026");
+  const [filterKategori, setFilterKategori] = useState("Semua Kategori");
+  const [filterUrutkan, setFilterUrutkan] = useState("Terbaru");
   
   const txPageItemClass = "grid grid-cols-[1fr_auto] md:grid-cols-[100px_1fr_120px_120px_140px] gap-4 px-6 py-4 items-center border-b border-border-light hover:bg-surface-secondary/50 transition-colors duration-150 last:border-b-0 cursor-pointer";
   const txIconClass = "w-10 h-10 rounded-full flex items-center justify-center shrink-0 [&>svg]:w-5 [&>svg]:h-5";
@@ -23,56 +24,44 @@ export default function Transaksi() {
           <h1 className="text-[24px] font-bold tracking-[-0.02em]">Transaksi</h1>
           <p className="text-[13px] text-text-secondary mt-0.5">Riwayat semua transaksi keuangan</p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-          <button className={`${btnGhostClass} ${activeTab === 'Semua' ? btnGhostActiveClass : ''}`} type="button" onClick={() => setActiveTab('Semua')}>Semua</button>
-          <button className={`${btnGhostClass} ${activeTab === 'Pemasukan' ? btnGhostActiveClass : ''}`} type="button" onClick={() => setActiveTab('Pemasukan')}>
-            <TrendingUpIcon aria-hidden="true" />
-            Pemasukan
-          </button>
-          <button className={`${btnGhostClass} ${activeTab === 'Pengeluaran' ? btnGhostActiveClass : ''}`} type="button" onClick={() => setActiveTab('Pengeluaran')}>
-            <TrendingDownIcon aria-hidden="true" />
-            Pengeluaran
-          </button>
-          <div className="relative flex items-center ml-2 [&>svg]:absolute [&>svg]:left-3 [&>svg]:w-4 [&>svg]:h-4 [&>svg]:text-text-tertiary [&>svg]:pointer-events-none">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full md:w-auto mt-4 md:mt-0">
+          <div className="flex items-center p-1 bg-surface-secondary rounded-lg border border-border/60 shadow-sm w-full md:w-auto overflow-x-auto">
+            <button className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-[13px] transition-all duration-200 cursor-pointer whitespace-nowrap ${activeTab === 'Semua' ? 'bg-surface shadow-sm text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface/50'}`} type="button" onClick={() => setActiveTab('Semua')}>Semua</button>
+            <button className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-[13px] transition-all duration-200 cursor-pointer whitespace-nowrap [&>svg]:w-4 [&>svg]:h-4 ${activeTab === 'Pemasukan' ? 'bg-surface shadow-sm text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface/50'}`} type="button" onClick={() => setActiveTab('Pemasukan')}>
+              <TrendingUpIcon aria-hidden="true" />
+              Pemasukan
+            </button>
+            <button className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-[13px] transition-all duration-200 cursor-pointer whitespace-nowrap [&>svg]:w-4 [&>svg]:h-4 ${activeTab === 'Pengeluaran' ? 'bg-surface shadow-sm text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-surface/50'}`} type="button" onClick={() => setActiveTab('Pengeluaran')}>
+              <TrendingDownIcon aria-hidden="true" />
+              Pengeluaran
+            </button>
+          </div>
+          <div className="relative flex items-center w-full md:w-auto [&>svg]:absolute [&>svg]:left-3 [&>svg]:w-4 [&>svg]:h-4 [&>svg]:text-text-tertiary [&>svg]:pointer-events-none">
             <SearchIcon aria-hidden="true" />
-            <input type="text" className="bg-surface-secondary border border-transparent rounded-lg pl-9 pr-4 py-2.5 text-[14px] text-text-primary w-full md:w-[240px] focus:outline-none focus:bg-surface focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all min-w-[200px]" placeholder="Cari transaksi..." aria-label="Cari transaksi" />
+            <input type="text" className="bg-surface border border-border shadow-sm rounded-lg pl-9 pr-4 py-2.5 text-[13px] text-text-primary w-full md:w-[260px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-text-tertiary" placeholder="Cari transaksi..." aria-label="Cari transaksi" />
           </div>
         </div>
       </header>
 
-      <div className="flex items-center gap-6 mb-6 overflow-x-auto pb-2 -mx-8 px-8 md:mx-0 md:px-0 md:pb-0 md:overflow-visible">
-        <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-          <span className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider">Bulan</span>
-          <select className="appearance-none bg-transparent border-none text-[14px] font-semibold text-text-primary cursor-pointer pr-6 py-1 focus:outline-none focus:text-primary transition-colors bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-position-[right_center] bg-size-[16px_16px]" aria-label="Filter bulan">
-            <option>Juni 2026</option>
-            <option>Mei 2026</option>
-            <option>April 2026</option>
-            <option>Maret 2026</option>
-            <option>Februari 2026</option>
-            <option>Januari 2026</option>
-          </select>
-        </div>
-        <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-          <span className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider">Kategori</span>
-          <select className="appearance-none bg-transparent border-none text-[14px] font-semibold text-text-primary cursor-pointer pr-6 py-1 focus:outline-none focus:text-primary transition-colors bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-position-[right_center] bg-size-[16px_16px]" aria-label="Filter kategori">
-            <option>Semua Kategori</option>
-            <option>Makanan</option>
-            <option>Transportasi</option>
-            <option>Langganan</option>
-            <option>Belanja</option>
-            <option>Pemasukan</option>
-            <option>Lainnya</option>
-          </select>
-        </div>
-        <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-          <span className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider">Urutkan</span>
-          <select className="appearance-none bg-transparent border-none text-[14px] font-semibold text-text-primary cursor-pointer pr-6 py-1 focus:outline-none focus:text-primary transition-colors bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-position-[right_center] bg-size-[16px_16px]" aria-label="Urutkan berdasarkan">
-            <option>Terbaru</option>
-            <option>Terlama</option>
-            <option>Terbesar</option>
-            <option>Terkecil</option>
-          </select>
-        </div>
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <FilterDropdown 
+          label="Bulan" 
+          value={filterBulan} 
+          onChange={setFilterBulan} 
+          options={["Juni 2026", "Mei 2026", "April 2026", "Maret 2026", "Februari 2026", "Januari 2026"]} 
+        />
+        <FilterDropdown 
+          label="Kategori" 
+          value={filterKategori} 
+          onChange={setFilterKategori} 
+          options={["Semua Kategori", "Makanan", "Transportasi", "Langganan", "Belanja", "Pemasukan", "Lainnya"]} 
+        />
+        <FilterDropdown 
+          label="Urutkan" 
+          value={filterUrutkan} 
+          onChange={setFilterUrutkan} 
+          options={["Terbaru", "Terlama", "Terbesar", "Terkecil"]} 
+        />
       </div>
 
       <section className="bg-surface border border-border rounded-xl" style={{overflow: 'hidden'}} aria-label="Daftar transaksi">
