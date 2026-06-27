@@ -47,13 +47,21 @@ export async function extractTransaction(text: string): Promise<ParsedTransactio
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: text },
       ],
-      model: "llama3-8b-8192", // Fast and capable model
+      model: "llama-3.3-70b-versatile", // Fast and capable model
       temperature: 0.1, // Low temperature for deterministic output
       response_format: { type: "json_object" },
     });
 
-    const content = chatCompletion.choices[0]?.message?.content;
-    if (!content) return null;
+    let content = chatCompletion.choices[0]?.message?.content;
+    if (!content) {
+      console.error("Groq returned empty content");
+      return null;
+    }
+
+    // Strip markdown formatting if AI mistakenly adds it
+    content = content.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    console.log("Raw Groq Content:", content);
 
     const parsed = JSON.parse(content);
     return {
@@ -62,8 +70,8 @@ export async function extractTransaction(text: string): Promise<ParsedTransactio
       type: parsed.type,
       description: parsed.description,
     };
-  } catch (error) {
-    console.error("Failed to extract transaction using Groq:", error);
+  } catch (error: any) {
+    console.error("Failed to extract transaction using Groq:", error.message || error);
     return null;
   }
 }

@@ -20,6 +20,8 @@ export default function UmumPengaturan() {
   const supabase = createClient();
 
   useEffect(() => {
+    let channel: any;
+
     const fetchUser = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
@@ -29,6 +31,21 @@ export default function UmumPengaturan() {
           if (data.telegram_sync_token && data.telegram_sync_token_expires && new Date(data.telegram_sync_token_expires) > new Date()) {
             setOtpCode(data.telegram_sync_token);
           }
+          
+          channel = supabase.channel('user-settings-changes')
+            .on(
+              'postgres_changes',
+              { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${authUser.id}` },
+              (payload) => {
+                const updatedUser = payload.new;
+                setUser(updatedUser);
+                if (updatedUser.telegram_chat_id) {
+                  setOtpCode("");
+                  setShowOtpModal(false);
+                }
+              }
+            )
+            .subscribe();
         }
       }
       setIsLoading(false);
@@ -46,6 +63,12 @@ export default function UmumPengaturan() {
         if (parsed.reminderTime !== undefined) setReminderTime(parsed.reminderTime);
       } catch (e) {}
     }
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   // Save settings on change
