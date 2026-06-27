@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { WalletIcon, TrendingDownIcon, CheckIcon, SaveIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon } from "@/components/icons";
+import { FilterDropdown } from "@/components/FilterDropdown";
 
 export default function Anggaran() {
+  const [filterBulan, setFilterBulan] = useState("Juni 2026");
   // Shared classes
   const metricCardClass = "bg-surface border border-border rounded-xl px-6 py-5 flex flex-col gap-2 transition-shadow duration-200 hover:shadow-md";
   const metricLabelClass = "flex items-center gap-2 text-[12px] font-medium text-text-secondary uppercase tracking-[0.04em]";
@@ -21,16 +24,11 @@ export default function Anggaran() {
           <p className="text-[13px] text-text-secondary mt-0.5">Kelola batas pengeluaran bulanan per kategori</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <select 
-            className="appearance-none bg-surface border border-border rounded-lg px-4 py-2.5 text-[14px] text-text-primary w-full md:max-w-[200px] cursor-pointer transition-all duration-200 focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,107,0,0.1)] bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%24%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-position[right_12px_center]"
-            aria-label="Pilih bulan" 
-            defaultValue="2026-06"
-          >
-            <option value="2026-06">Juni 2026</option>
-            <option value="2026-05">Mei 2026</option>
-            <option value="2026-04">April 2026</option>
-            <option value="2026-03">Maret 2026</option>
-          </select>
+          <FilterDropdown
+            value={filterBulan}
+            onChange={setFilterBulan}
+            options={["Juni 2026", "Mei 2026", "April 2026", "Maret 2026"]}
+          />
           <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-white hover:bg-primary-hover shadow-sm hover:shadow active:translate-y-px [&>svg]:w-4 [&>svg]:h-4" type="button">
             <SaveIcon aria-hidden="true" />
             Simpan
