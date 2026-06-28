@@ -62,6 +62,31 @@ export default function Dashboard() {
     };
   }, [supabase, fetchData]);
 
+  const handleDeleteTx = async (id: string) => {
+    if (confirm("Hapus transaksi ini?")) {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) {
+        showToast("Gagal menghapus transaksi");
+      } else {
+        showToast("Transaksi berhasil dihapus");
+        fetchData();
+      }
+    }
+  };
+
+  const highestExpenseCategory = useMemo(() => {
+    if (!transactions.length) return null;
+    const catMap: Record<string, number> = {};
+    transactions.filter(t => t.type === 'expense').forEach(t => {
+      catMap[t.category] = (catMap[t.category] || 0) + t.amount;
+    });
+    const entries = Object.entries(catMap);
+    if (!entries.length) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return { name: entries[0][0], amount: entries[0][1] };
+  }, [transactions]);
+
+
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const balance = totalIncome - totalExpense;
@@ -121,7 +146,7 @@ export default function Dashboard() {
   const metricValueClass = "font-mono text-[28px] font-bold tabular-nums tracking-[-0.03em] leading-[1.2]";
   const metricChangeClass = "inline-flex items-center gap-1 text-[12px] font-medium px-2 py-0.5 rounded-full w-fit [&>svg]:w-3 [&>svg]:h-3";
   const cardClass = "bg-surface border border-border rounded-xl p-6 transition-shadow duration-200 hover:shadow-sm";
-  const txItemClass = "flex items-center gap-3 py-3 border-b border-border-light last:border-b-0";
+  const txItemClass = "group flex items-center gap-3 py-3 border-b border-border-light last:border-b-0";
   const txIconClass = "w-9 h-9 rounded-sm flex items-center justify-center shrink-0 [&>svg]:w-4 [&>svg]:h-4";
   const txAmountClass = "font-mono text-[14px] font-semibold tabular-nums text-right whitespace-nowrap";
 
@@ -257,7 +282,11 @@ export default function Dashboard() {
           <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary-surface text-primary">AI Insight</span>
         </div>
         <p className="text-[13px] leading-[1.7] text-[#D6D3D1] [&>strong]:text-[#FAFAF9] [&>strong]:font-semibold">
-          Pengeluaran <strong>Makanan</strong> minggu ini naik <strong>23%</strong> dibanding minggu lalu, didorong oleh 4 transaksi makan di luar di atas Rp80.000. Kategori <strong>Transportasi</strong> stabil di Rp25.000/hari. Saran: pertimbangkan meal-prep untuk 2 hari kerja agar bisa hemat hingga <strong>Rp160.000/minggu</strong>.
+          {highestExpenseCategory ? (
+            <>Pengeluaran terbesar Anda sejauh ini adalah di kategori <strong>{highestExpenseCategory.name}</strong> sebesar <strong>{formatRp(highestExpenseCategory.amount)}</strong>. Pastikan untuk selalu memantau kategori ini agar pengeluaran Anda tetap terkontrol. Terus semangat berhemat!</>
+          ) : (
+            <>Belum ada data pengeluaran yang cukup untuk dianalisis oleh AI. Catat pengeluaran pertama Anda via Telegram!</>
+          )}
         </p>
         <div className="flex gap-2 mt-4">
           <button className="text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20" type="button">Lihat Detail</button>
@@ -322,8 +351,17 @@ export default function Dashboard() {
                       <span>{new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                     </div>
                   </div>
-                  <div className={`${txAmountClass} ${tx.type === 'income' ? 'text-success' : 'text-danger'}`}>
-                    {tx.type === 'income' ? '+' : '-'}{formatRp(tx.amount)}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className={`${txAmountClass} ${tx.type === 'income' ? 'text-success' : 'text-danger'}`}>
+                      {tx.type === 'income' ? '+' : '-'}{formatRp(tx.amount)}
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteTx(tx.id)}
+                      className="text-[11px] text-danger opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                      type="button"
+                    >
+                      Hapus
+                    </button>
                   </div>
                 </div>
               ))
