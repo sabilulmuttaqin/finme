@@ -88,7 +88,7 @@ export default function Transaksi() {
     setDeleteModalId(null);
   };
   
-  const txPageItemClass = "group grid grid-cols-[1fr_auto] md:grid-cols-[100px_1fr_120px_120px_140px] gap-4 px-6 py-4 items-center border-b border-border-light hover:bg-surface-secondary/50 transition-colors duration-150 last:border-b-0 cursor-pointer";
+  const txPageItemClass = "group grid grid-cols-[1fr_auto] md:grid-cols-[100px_1fr_120px_120px_140px_80px] gap-4 px-6 py-4 items-center border-b border-border-light hover:bg-surface-secondary/50 transition-colors duration-150 last:border-b-0 cursor-pointer";
   const txIconClass = "w-10 h-10 rounded-full flex items-center justify-center shrink-0 [&>svg]:w-5 [&>svg]:h-5";
   const txIconExpenseClass = `${txIconClass} bg-danger-surface text-danger`;
   const txIconIncomeClass = `${txIconClass} bg-success-surface text-success`;
@@ -158,12 +158,13 @@ export default function Transaksi() {
         </div>
 
         <div className="w-full">
-          <div className="hidden md:grid grid-cols-[100px_1fr_120px_120px_140px] gap-4 px-6 py-3 bg-surface-secondary border-b border-border text-[12px] font-medium text-text-tertiary uppercase tracking-wider items-center">
+          <div className="hidden md:grid grid-cols-[100px_1fr_120px_120px_140px_80px] gap-4 px-6 py-3 bg-surface-secondary border-b border-border text-[12px] font-medium text-text-tertiary uppercase tracking-wider items-center">
             <span>Tanggal</span>
             <span>Deskripsi</span>
             <span>Kategori</span>
             <span>Sumber</span>
             <span style={{textAlign: 'right'}}>Jumlah</span>
+            <span></span>
           </div>
           <div className="flex flex-col">
             {isLoading ? (
