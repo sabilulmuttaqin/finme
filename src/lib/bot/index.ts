@@ -298,6 +298,23 @@ bot.on("message:text", async (ctx) => {
 
       // Tentukan tanggal: pakai date dari AI jika ada, fallback ke hari ini (WIB)
       const txDate = date || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const txWallet = wallet || "Cash";
+
+      // Cek apakah wallet ada di db, kalau ga ada buat baru
+      const { data: existingWallet } = await supabase
+        .from("wallets")
+        .select("id")
+        .eq("user_id", user.id)
+        .ilike("name", txWallet)
+        .single();
+      
+      if (!existingWallet) {
+        await supabase.from("wallets").insert({
+          user_id: user.id,
+          name: txWallet,
+          icon: "wallet"
+        });
+      }
 
       const { data: inserted, error: insertError } = await supabase.from("transactions").insert({
         user_id: user.id,
@@ -305,7 +322,7 @@ bot.on("message:text", async (ctx) => {
         category: category || "Lainnya",
         type: type || "expense",
         description: description || "",
-        wallet: wallet || "Cash",
+        wallet: txWallet,
         date: txDate,
         is_manual_web: false,
       }).select("id").single();
@@ -316,7 +333,7 @@ bot.on("message:text", async (ctx) => {
       const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount || 0);
       const shortId = inserted.id.substring(0, 6);
       const dateLabel = new Date(txDate + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
-      botReply = `✅ Tercatat!\nID: ${shortId}\nTanggal: ${dateLabel}\nJumlah: ${rp} (${typeText})\nKategori: ${category}\nDompet: ${wallet || "Cash"}\nDeskripsi: ${description}`;
+      botReply = `✅ Tercatat!\nID: ${shortId}\nTanggal: ${dateLabel}\nJumlah: ${rp} (${typeText})\nKategori: ${category}\nDompet: ${txWallet}\nDeskripsi: ${description}`;
       await ctx.reply(botReply);
     } 
     else if (extracted.intent === "query") {

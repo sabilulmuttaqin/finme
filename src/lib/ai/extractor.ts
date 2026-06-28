@@ -44,17 +44,17 @@ Aturan Utama:
      * "this_month" → bulan ini
      * "YYYY-MM-DD" → tanggal spesifik
    - Jika tidak menyebut waktu spesifik, gunakan "today".
-4. JIKA PENGGUNA MEMINTA MENCATAT pengeluaran/pemasukan, berikan "intent": "insert" dan isi "transaction":
-   - amount: Angka bulat (tanpa titik/koma).
-   - type: "income" atau "expense".
-   - category: "Makanan", "Transportasi", "Hiburan", "Langganan", "Belanja", "Pemasukan", "Kesehatan", "Pendidikan", atau "Lainnya".
-   - description: Maks 5-7 kata.
-   - wallet: "Cash", "GoPay", "OVO", "DANA", "ShopeePay", atau dompet lainnya. (Default: "Cash" jika user tidak menyebutkan metode pembayaran).
-   - date: (OPSIONAL) Format YYYY-MM-DD. Isi HANYA jika user menyebut tanggal/waktu tertentu:
-     * "kemarin" → hitung dari hari ini (${TODAY_WIB}) dikurangi 1 hari
-     * "tadi pagi", "tadi siang" → gunakan tanggal hari ini: ${TODAY_WIB}
-     * "minggu lalu senin" → hitung tanggalnya
-     * Jika user tidak menyebut tanggal, JANGAN isi field date (biarkan kosong)
+4. JIKA PENGGUNA MEMINTA MENCATAT pengeluaran/pemasukan:
+   - Evaluasi apakah data cukup. Data minimal HANYA butuh "amount" (jumlah uang), "description" (keterangan), dan "wallet" (metode pembayaran/dompet).
+   - JIKA "amount", "description", ATAU "wallet" KOSONG/TIDAK JELAS (contoh: "saya tadi beli bensin" -> tidak ada jumlah & dompet; "beli bensin 50rb" -> tidak ada info dompet):
+     berikan "intent": "ask_more_info" dan isi "reply_text" dengan pertanyaan untuk melengkapi data tersebut. (contoh: "Pakai dompet/metode pembayaran apa?")
+   - JIKA DATA LENGKAP, berikan "intent": "insert" dan isi "transaction":
+     * amount: Angka bulat (tanpa titik/koma).
+     * type: "income" atau "expense".
+     * category: "Makanan", "Transportasi", "Hiburan", "Langganan", "Belanja", "Pemasukan", "Kesehatan", "Pendidikan", atau "Lainnya".
+     * description: Maks 5-7 kata.
+     * wallet: "Cash", "GoPay", "OVO", "DANA", "ShopeePay", atau dompet lainnya sesuai ucapan user.
+     * date: (OPSIONAL) Format YYYY-MM-DD. Isi HANYA jika user menyebut tanggal/waktu tertentu (kemarin, tadi pagi, dsb). Jika tidak, kosongkan.
 5. JIKA PENGGUNA INGIN MENGEDIT/MENGHAPUS TRANSAKSI:
    - Jika ada ID, kamu WAJIB mengambil ID tersebut.
    - Jika kamu sudah tahu ID-nya DAN pengguna sudah memberikan detail perubahannya, berikan "intent": "edit" atau "delete" dengan "transaction": {"id": "ID_TERSEBUT", ...field_yg_diubah}.
