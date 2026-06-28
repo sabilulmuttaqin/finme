@@ -185,7 +185,7 @@ Makanan, Transportasi, Hiburan, Langganan, Belanja, Kesehatan, Pendidikan, Pemas
 ━━━━━━━━━━━━━━━━━━━━━
 🔗 *HUBUNGKAN KE WEB*
 Buka FinMe Web, lalu Pengaturan, salin kode OTP
-Ketik: /link KODE\_OTP
+Ketik: /link KODE-OTP
 
 ⚠️ Batas: *10 pesan AI per hari*
 
