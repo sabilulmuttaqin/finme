@@ -59,10 +59,16 @@ function getDateRange(dateStr?: string): { from?: string; to?: string } {
     const yest = new Date(now.getTime() - 86400000);
     return { from: toISO(startOfDay(yest)), to: toISO(endOfDay(yest)) };
   }
-  if (dateStr === "this_week" || dateStr === "minggu_ini" || dateStr === "minggu_lalu" || dateStr === "last_week") {
-    // Ambil 7 hari terakhir
+  if (dateStr === "this_week" || dateStr === "minggu_ini") {
+    // Ambil 7 hari terakhir (sampai hari ini)
     const weekAgo = new Date(now.getTime() - 7 * 86400000);
     return { from: toISO(startOfDay(weekAgo)), to: toISO(endOfDay(now)) };
+  }
+  if (dateStr === "last_week" || dateStr === "minggu_lalu") {
+    // Ambil hari ke 8 sampai ke 14 yang lalu
+    const weekAgo = new Date(now.getTime() - 7 * 86400000);
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 86400000);
+    return { from: toISO(startOfDay(twoWeeksAgo)), to: toISO(endOfDay(weekAgo)) };
   }
   if (dateStr === "this_month" || dateStr === "bulan_ini") {
     const startMonth = new Date(now);
@@ -309,7 +315,7 @@ bot.on("message:text", async (ctx) => {
       const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount || 0);
       const shortId = inserted.id.substring(0, 6);
       const dateLabel = new Date(txDate + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
-      botReply = `✅ Tercatat!\nID: ${shortId}\n📅 ${dateLabel}\n💰 ${rp} → ${category} (${typeText})\n📝 ${description}`;
+      botReply = `✅ Tercatat!\nID: ${shortId}\nTanggal: ${dateLabel}\nJumlah: ${rp} (${typeText})\nKategori: ${category}\nDeskripsi: ${description}`;
       await ctx.reply(botReply);
     } 
     else if (extracted.intent === "query") {

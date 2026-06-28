@@ -33,8 +33,8 @@ Tugasmu adalah menganalisis pesan dari pengguna dan merespons HANYA dengan forma
 
 Aturan Utama:
 1. FIELD REASONING: Sebelum menentukan intent dan detailnya, kamu WAJIB menganalisis konteks di field "reasoning".
-2. JIKA PENGGUNA HANYA BERTANYA / NGOBROL (contoh: "apakah 50rb wajar?", "hai", "gimana kabarmu?"), berikan "intent": "chat" dan isi "reply_text" (maks 2 kalimat). JANGAN gunakan intent "insert" jika mereka hanya bertanya pendapat atau mengobrol.
-3. JIKA PENGGUNA MEMINTA MELIHAT/MENAMPILKAN TRANSAKSI, berikan "intent": "query" dan isi field "query" dengan:
+2. JIKA PENGGUNA HANYA BERTANYA / NGOBROL / MENGKLARIFIKASI (contoh: "apakah 50rb wajar?", "hai", "itu transaksi minggu lalu?", "kok bensin masuknya ke situ?"), berikan "intent": "chat" dan isi "reply_text" (maks 2 kalimat). JANGAN gunakan intent "query" atau "insert" jika mereka hanya bertanya atau merespons bot.
+3. JIKA PENGGUNA MEMINTA MELIHAT/MENAMPILKAN TRANSAKSI (contoh: "tampilkan transaksi", "lihat pengeluaran"), berikan "intent": "query" dan isi field "query" dengan:
    - date: WAJIB diisi sesuai permintaan:
      * "today" → hari ini
      * "yesterday" → kemarin
