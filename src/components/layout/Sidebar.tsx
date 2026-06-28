@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { BrandLogoIcon, SidebarToggleIcon, GridIcon, DollarIcon, WalletIcon, BarChartIcon, TagIcon, SettingsIcon, ChevronDownIcon, LogoutIcon } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: { isOpen: boolean, onClose: () => void, isCollapsed: boolean, onToggleCollapse: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
   const [isPengaturanOpen, setIsPengaturanOpen] = useState(pathname.startsWith('/pengaturan'));
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('lastActivity');
+    router.push('/login');
+  };
 
   const navItemBase = "flex items-center gap-2.5 px-3 py-2.5 rounded-sm text-[13px] font-medium text-text-secondary transition-colors duration-150 min-h-[44px] hover:bg-surface-secondary hover:text-text-primary [&>svg]:shrink-0 [&>svg]:w-[18px] [&>svg]:h-[18px]";
   const navItemActive = "bg-primary-surface text-primary font-semibold";
@@ -96,10 +105,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         </div>
 
         <div className="flex-1"></div>
-        <Link href="/login" className={`${navItemBase} text-danger mt-2 border-t border-border pt-4 rounded-none hover:bg-danger-surface hover:text-danger`}>
+        <button onClick={handleLogout} className={`${navItemBase} text-danger mt-2 border-t border-border pt-4 rounded-none hover:bg-danger-surface hover:text-danger w-full justify-start cursor-pointer bg-transparent border-x-0 border-b-0`}>
           <LogoutIcon aria-hidden="true" />
           <span>Keluar</span>
-        </Link>
+        </button>
       </nav>
     </>
   );
