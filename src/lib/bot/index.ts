@@ -4,6 +4,81 @@ import { createServerClient } from "../supabase/server";
 
 export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
+// Kategori default (fallback jika user belum buat kategori)
+const DEFAULT_CATEGORIES = [
+  { name: "Makanan", type: "expense" },
+  { name: "Transportasi", type: "expense" },
+  { name: "Hiburan", type: "expense" },
+  { name: "Langganan", type: "expense" },
+  { name: "Belanja", type: "expense" },
+  { name: "Kesehatan", type: "expense" },
+  { name: "Pendidikan", type: "expense" },
+  { name: "Pemasukan", type: "income" },
+  { name: "Lainnya", type: "expense" },
+];
+
+/** Pastikan user punya kategori default, seed jika kosong */
+async function ensureDefaultCategories(supabase: any, userId: string) {
+  const { data: existing } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1);
+
+  if (!existing || existing.length === 0) {
+    await supabase.from("categories").insert(
+      DEFAULT_CATEGORIES.map((c) => ({ ...c, user_id: userId }))
+    );
+  }
+}
+
+/** Hitung rentang tanggal dari string seperti "today", "yesterday", "this_week" */
+function getDateRange(dateStr?: string): { from?: string; to?: string } {
+  // Gunakan waktu lokal WIB (UTC+7)
+  const nowUtc = new Date();
+  const wibOffset = 7 * 60 * 60 * 1000;
+  const now = new Date(nowUtc.getTime() + wibOffset);
+
+  const toISO = (d: Date) => d.toISOString().replace('Z', '+07:00');
+
+  const startOfDay = (d: Date) => {
+    const s = new Date(d);
+    s.setUTCHours(0, 0, 0, 0);
+    return s;
+  };
+  const endOfDay = (d: Date) => {
+    const s = new Date(d);
+    s.setUTCHours(23, 59, 59, 999);
+    return s;
+  };
+
+  if (!dateStr || dateStr === "today" || dateStr === "hari_ini") {
+    return { from: toISO(startOfDay(now)), to: toISO(endOfDay(now)) };
+  }
+  if (dateStr === "yesterday" || dateStr === "kemarin") {
+    const yest = new Date(now.getTime() - 86400000);
+    return { from: toISO(startOfDay(yest)), to: toISO(endOfDay(yest)) };
+  }
+  if (dateStr === "this_week" || dateStr === "minggu_ini" || dateStr === "minggu_lalu" || dateStr === "last_week") {
+    // Ambil 7 hari terakhir
+    const weekAgo = new Date(now.getTime() - 7 * 86400000);
+    return { from: toISO(startOfDay(weekAgo)), to: toISO(endOfDay(now)) };
+  }
+  if (dateStr === "this_month" || dateStr === "bulan_ini") {
+    const startMonth = new Date(now);
+    startMonth.setUTCDate(1);
+    startMonth.setUTCHours(0, 0, 0, 0);
+    return { from: toISO(startMonth), to: toISO(endOfDay(now)) };
+  }
+  // Coba parse tanggal spesifik (format YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const d = new Date(dateStr + 'T00:00:00+07:00');
+    return { from: toISO(startOfDay(d)), to: toISO(endOfDay(d)) };
+  }
+  // Tidak dikenal → kembalikan kosong (tampil semua)
+  return {};
+}
+
 bot.command("link", async (ctx) => {
   const chatId = ctx.chat.id.toString();
   const otp = ctx.match?.trim();
@@ -56,6 +131,72 @@ bot.command("link", async (ctx) => {
   await ctx.reply("Berhasil! Akun Telegram Anda sekarang sudah terhubung dengan akun Web FinMe.");
 });
 
+bot.command("start", async (ctx) => {
+  const firstName = ctx.from?.first_name || "";
+  await ctx.reply(
+`Halo${firstName ? " " + firstName : ""}! Selamat datang di *FinMe Bot*. 👋
+
+Aku siap bantu kamu mencatat keuangan harian dengan mudah.
+Ketik /help untuk melihat panduan lengkap pemakaian.`,
+    { parse_mode: "Markdown" }
+  );
+});
+
+bot.command("help", async (ctx) => {
+  await ctx.reply(
+`📖 *Panduan Pemakaian FinMe Bot*
+
+━━━━━━━━━━━━━━━━━━━━━
+📝 *MENCATAT TRANSAKSI*
+Ketik pengeluaran atau pemasukan secara natural:
+
+• \`beli kopi 25rb\`
+• \`makan siang 35.000\`
+• \`gaji masuk 5jt\`
+• \`kemarin nonton bioskop 50rb\`
+• \`bensin 20rb tadi pagi\`
+
+━━━━━━━━━━━━━━━━━━━━━
+🔍 *MELIHAT TRANSAKSI*
+• \`tampilkan transaksi hari ini\`
+• \`lihat pengeluaran kemarin\`
+• \`transaksi minggu ini\`
+• \`transaksi bulan ini\`
+
+━━━━━━━━━━━━━━━━━━━━━
+✏️ *EDIT TRANSAKSI*
+Gunakan ID pendek \\(6 karakter\\) yang muncul saat mencatat:
+
+1. Ketik: \`edit a1b2c3\`
+2. Bot tampilkan detail transaksi
+3. Balas dengan perubahan yang diinginkan:
+   • \`ganti deskripsi jadi makan malam\`
+   • \`ubah jumlah jadi 50000\`
+   • \`kategori jadi Transportasi\`
+
+━━━━━━━━━━━━━━━━━━━━━
+🗑️ *HAPUS TRANSAKSI*
+• \`hapus a1b2c3\`
+• \`delete a1b2c3\`
+
+━━━━━━━━━━━━━━━━━━━━━
+🏷️ *KATEGORI TERSEDIA*
+Makanan · Transportasi · Hiburan
+Langganan · Belanja · Kesehatan
+Pendidikan · Pemasukan · Lainnya
+
+━━━━━━━━━━━━━━━━━━━━━
+🔗 *HUBUNGKAN KE WEB*
+Buka FinMe Web → Pengaturan → Salin kode OTP
+lalu ketik: \`/link KODE_OTP\`
+
+⚠️ Batas: *10 pesan AI per hari*
+
+💡 *Tips:* Kamu bisa sebut tanggal relatif seperti "kemarin", "tadi pagi" dan AI akan otomatis menyesuaikan tanggal transaksinya\\!`,
+    { parse_mode: "MarkdownV2" }
+  );
+});
+
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text;
   const chatId = ctx.chat.id.toString();
@@ -81,9 +222,14 @@ bot.on("message:text", async (ctx) => {
       return;
     }
     user = newUser;
+    // Seed kategori default untuk user baru
+    await ensureDefaultCategories(supabase, user.id);
     await ctx.reply("Selamat datang di FinMe! Akun Telegram Anda telah terhubung. Coba ketik pengeluaran pertama Anda (misal: 'beli kopi 25rb').");
     return;
   }
+
+  // Pastikan user lama juga punya kategori default
+  await ensureDefaultCategories(supabase, user.id);
 
   // 2. Fetch session history
   let { data: session } = await supabase
@@ -141,13 +287,18 @@ bot.on("message:text", async (ctx) => {
       await ctx.reply(botReply);
     } 
     else if (extracted.intent === "insert" && extracted.transaction) {
-      const { amount, category, type, description } = extracted.transaction;
+      const { amount, category, type, description, date } = extracted.transaction;
+
+      // Tentukan tanggal: pakai date dari AI jika ada, fallback ke hari ini (WIB)
+      const txDate = date || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
       const { data: inserted, error: insertError } = await supabase.from("transactions").insert({
         user_id: user.id,
         amount: amount || 0,
         category: category || "Lainnya",
         type: type || "expense",
         description: description || "",
+        date: txDate,
         is_manual_web: false,
       }).select("id").single();
 
@@ -156,25 +307,43 @@ bot.on("message:text", async (ctx) => {
       const typeText = type === "income" ? "Pemasukan" : "Pengeluaran";
       const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount || 0);
       const shortId = inserted.id.substring(0, 6);
-      botReply = `ID: ${shortId}\nTercatat: ${rp} untuk ${category} (${typeText}).\nKeterangan: ${description}`;
+      const dateLabel = new Date(txDate + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
+      botReply = `✅ Tercatat!\nID: ${shortId}\n📅 ${dateLabel}\n💰 ${rp} → ${category} (${typeText})\n📝 ${description}`;
       await ctx.reply(botReply);
     } 
     else if (extracted.intent === "query") {
-      // Basic query, just fetch last 5 for now to show context awareness
-      const { data: items } = await supabase
+      // Filter berdasarkan kolom date
+      const dateRange = getDateRange(extracted.query?.date);
+      
+      let q = supabase
         .from("transactions")
-        .select("id, amount, description, type")
+        .select("id, amount, description, type, category, date")
         .eq("user_id", user.id)
+        .order("date", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
+
+      // Filter menggunakan kolom date (YYYY-MM-DD)
+      if (dateRange.from) q = q.gte("date", dateRange.from.slice(0, 10));
+      if (dateRange.to) q = q.lte("date", dateRange.to.slice(0, 10));
+
+      const { data: items } = await q;
         
       if (!items || items.length === 0) {
-        botReply = "Belum ada data transaksi.";
+        const periodeMap: Record<string, string> = {
+          today: "hari ini", hari_ini: "hari ini",
+          yesterday: "kemarin", kemarin: "kemarin",
+          this_week: "minggu ini", minggu_ini: "minggu ini",
+          last_week: "minggu lalu", minggu_lalu: "minggu lalu",
+          this_month: "bulan ini", bulan_ini: "bulan ini",
+        };
+        const periodeLabel = periodeMap[extracted.query?.date || ""] || "periode tersebut";
+        botReply = `Belum ada transaksi untuk ${periodeLabel}.`;
       } else {
-        botReply = "Berikut beberapa transaksi terakhirmu:\n" + items.map(t => {
-          const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(t.amount);
-          return `- [${t.id.substring(0,6)}] ${t.description} (${rp})`;
-        }).join("\n");
+        const rp = (n: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+        botReply = "Berikut transaksimu:\n" + items.map(t =>
+          `- [${t.id.substring(0,6)}] ${t.description || t.category} (${rp(t.amount)})`
+        ).join("\n");
       }
       await ctx.reply(botReply);
     } 
@@ -207,35 +376,51 @@ bot.on("message:text", async (ctx) => {
     } 
     else if (extracted.intent === "edit" && extracted.transaction?.id) {
       const shortId = extracted.transaction.id;
-      const updates: any = {};
-      if (extracted.transaction.amount) updates.amount = extracted.transaction.amount;
-      if (extracted.transaction.category) updates.category = extracted.transaction.category;
-      if (extracted.transaction.description) updates.description = extracted.transaction.description;
-      
+      const hasChanges = extracted.transaction.amount || extracted.transaction.category || extracted.transaction.description;
+
       const { data: recentTxs } = await supabase
         .from("transactions")
-        .select("id")
+        .select("id, description, amount, category, type")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(100);
       
-      const targetId = recentTxs?.find(t => t.id.startsWith(shortId))?.id;
+      const targetTx = recentTxs?.find((t: any) => t.id.startsWith(shortId));
 
-      if (!targetId) {
-        botReply = `Gagal mengedit, ID ${shortId} tidak ditemukan.`;
+      if (!targetTx) {
+        botReply = `Transaksi dengan ID ${shortId} tidak ditemukan.`;
+        await ctx.reply(botReply);
+      } else if (!hasChanges) {
+        // Tampilkan detail transaksi dulu, lalu minta instruksi spesifik
+        const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(targetTx.amount);
+        const typeLabel = targetTx.type === "income" ? "Pemasukan" : "Pengeluaran";
+        botReply = `Detail transaksi [${shortId}]:\n📝 ${targetTx.description || "-"}\n🏷️ ${targetTx.category}\n💰 ${rp} (${typeLabel})\n\nMau diubah apa? Contoh:\n• "ganti deskripsi jadi makan siang"
+• "ubah jumlah jadi 30000"
+• "kategori jadi Transportasi"`;
+        await ctx.reply(botReply);
       } else {
+        // Ada perubahan langsung dari AI, eksekusi update
+        const updates: any = {};
+        if (extracted.transaction.amount) updates.amount = extracted.transaction.amount;
+        if (extracted.transaction.category) updates.category = extracted.transaction.category;
+        if (extracted.transaction.description) updates.description = extracted.transaction.description;
+
         const { error: editError } = await supabase
           .from("transactions")
           .update(updates)
-          .eq("id", targetId);
+          .eq("id", targetTx.id);
 
         if (editError) {
-          botReply = `Gagal mengedit, ID ${shortId} tidak ditemukan.`;
+          botReply = `Gagal mengedit transaksi [${shortId}].`;
         } else {
-          botReply = `Transaksi dengan ID ${shortId} berhasil diupdate!`;
+          const changedFields: string[] = [];
+          if (updates.description) changedFields.push(`deskripsi → "${updates.description}"`);
+          if (updates.category) changedFields.push(`kategori → ${updates.category}`);
+          if (updates.amount) changedFields.push(`jumlah → Rp${updates.amount.toLocaleString('id-ID')}`);
+          botReply = `✅ Transaksi [${shortId}] berhasil diupdate!\n${changedFields.join('\n')}`;
         }
+        await ctx.reply(botReply);
       }
-      await ctx.reply(botReply);
     } else {
       botReply = "Maaf, perintah tidak dikenali.";
       await ctx.reply(botReply);

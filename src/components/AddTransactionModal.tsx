@@ -4,11 +4,32 @@ import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 
+// Helper: format tanggal lokal ke YYYY-MM-DD untuk input[type=date]
+const toLocalDateValue = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+const DEFAULT_CATEGORIES = [
+  { name: "Makanan", type: "expense" },
+  { name: "Transportasi", type: "expense" },
+  { name: "Hiburan", type: "expense" },
+  { name: "Langganan", type: "expense" },
+  { name: "Belanja", type: "expense" },
+  { name: "Kesehatan", type: "expense" },
+  { name: "Pendidikan", type: "expense" },
+  { name: "Pemasukan", type: "income" },
+  { name: "Lainnya", type: "expense" },
+];
+
 export default function AddTransactionModal({ isOpen, onClose, initialData }: { isOpen: boolean, onClose: (msg?: string) => void, initialData?: any }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
+  const [txDate, setTxDate] = useState(toLocalDateValue(new Date()));
   const [categories, setCategories] = useState<{name: string, type: string}[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const supabase = createClient();
@@ -26,14 +47,29 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
         setDesc(initialData.description || "");
         setAmount(initialData.amount ? initialData.amount.toString() : "");
         setCategory(initialData.category || "");
+        // Jika ada kolom date di data, gunakan itu; fallback ke created_at
+        const rawDate = initialData.date || initialData.created_at;
+        setTxDate(rawDate ? rawDate.slice(0, 10) : toLocalDateValue(new Date()));
       } else {
         setDesc("");
         setAmount("");
         setCategory("");
+        setTxDate(toLocalDateValue(new Date()));
       }
       
       const fetchCategories = async () => {
-        const { data } = await supabase.from('categories').select('name, type');
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
+
+        let { data } = await supabase.from('categories').select('name, type').eq('user_id', authUser.id);
+        
+        // Jika user belum punya kategori, seed kategori default
+        if (!data || data.length === 0) {
+          await supabase.from('categories').insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: authUser.id })));
+          const { data: seeded } = await supabase.from('categories').select('name, type').eq('user_id', authUser.id);
+          data = seeded;
+        }
+
         if (data && data.length > 0) {
           setCategories(data);
           if (!initialData || !initialData.category) {
@@ -61,7 +97,8 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
           description: desc,
           amount: Number(amount),
           type: categories.find(c => c.name === category)?.type || "expense",
-          category: category || "lainnya"
+          category: category || "Lainnya",
+          date: txDate,
         }).eq('id', initialData.id);
         if (error) throw error;
         onClose("Transaksi berhasil diperbarui!");
@@ -71,7 +108,8 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
           description: desc,
           amount: Number(amount),
           type: categories.find(c => c.name === category)?.type || "expense",
-          category: category || "lainnya",
+          category: category || "Lainnya",
+          date: txDate,
           is_manual_web: true
         }]);
         if (error) throw error;
@@ -110,6 +148,18 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="modal-amount">Nominal <span className="text-danger" aria-label="wajib diisi">*</span></label>
               <input className={formInputClass} type="number" id="modal-amount" placeholder="50000" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            </div>
+            <div className={`${formGroupClass} col-span-full`}>
+              <label className={formLabelClass} htmlFor="modal-date">Tanggal Transaksi <span className="text-danger" aria-label="wajib diisi">*</span></label>
+              <input
+                className={formInputClass}
+                type="date"
+                id="modal-date"
+                value={txDate}
+                max={toLocalDateValue(new Date())}
+                onChange={(e) => setTxDate(e.target.value)}
+                required
+              />
             </div>
             <div className={`${formGroupClass} col-span-full`}>
               <label className={formLabelClass} htmlFor="modal-category">Kategori</label>

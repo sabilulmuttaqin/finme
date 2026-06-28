@@ -27,14 +27,30 @@ export default function Login() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   
   const router = useRouter();
   const supabase = createClient();
+
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(""), 4000);
+  };
+
+  const translateError = (msg: string) => {
+    if (msg.includes("Email not confirmed")) return "Email belum dikonfirmasi. Cek inbox email kamu dan klik link verifikasi.";
+    if (msg.includes("Invalid login credentials")) return "Email atau kata sandi salah.";
+    if (msg.includes("User already registered")) return "Email ini sudah terdaftar. Silakan masuk.";
+    if (msg.includes("Password should be")) return "Kata sandi minimal 6 karakter.";
+    if (msg.includes("Unable to validate")) return "Sesi tidak valid. Silakan coba lagi.";
+    return msg;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg("");
+    setSuccessMsg("");
 
     try {
       if (isLogin) {
@@ -50,12 +66,15 @@ export default function Login() {
         if (error) throw error;
         
         if (data.user) {
-          alert("Pendaftaran berhasil! Anda akan masuk sekarang.");
-          router.push("/dashboard");
+          // Tampilkan toast sukses lalu pindah ke tab login
+          showSuccess("🎉 Akun berhasil dibuat! Silakan masuk dengan akun Anda.");
+          setPassword("");
+          setConfirmPassword("");
+          setIsLogin(true);
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Terjadi kesalahan.");
+      setErrorMsg(translateError(err.message || "Terjadi kesalahan."));
     } finally {
       setIsLoading(false);
     }
@@ -126,6 +145,14 @@ export default function Login() {
               <p className="text-text-secondary text-sm mb-8 stagger-2">
                 {isLogin ? "Mulai kelola keuanganmu sekarang juga" : "Daftar untuk mengelola keuangan Anda"}
               </p>
+
+              {/* Success Toast */}
+              {successMsg && (
+                <div className="mb-6 p-3 rounded-xl bg-success/10 text-success text-[13px] border border-success/20 stagger-2 font-medium flex items-center gap-2">
+                  <svg className="w-4 h-4 shrink-0 fill-current" viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-.997-6l7.07-7.071-1.414-1.414-5.656 5.657-2.829-2.829-1.414 1.414L11.003 16z"/></svg>
+                  {successMsg}
+                </div>
+              )}
 
               {errorMsg && (
                 <div className="mb-6 p-3 rounded-xl bg-danger-surface text-danger text-[13px] border border-danger/20 stagger-2 font-medium">
@@ -239,6 +266,7 @@ export default function Login() {
                         onClick={() => {
                           setIsLogin(!isLogin);
                           setErrorMsg("");
+                          setSuccessMsg("");
                           setConfirmPassword("");
                         }}
                       >

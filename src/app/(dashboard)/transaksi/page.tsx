@@ -175,7 +175,7 @@ export default function Transaksi() {
               transactions.map((tx) => (
                 <div key={tx.id} className={txPageItemClass}>
                   <span className="hidden md:block text-[13px] text-text-tertiary font-mono whitespace-nowrap">
-                    {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date((tx.date || tx.created_at).slice(0, 10) + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={tx.type === 'income' ? txIconIncomeClass : txIconExpenseClass} aria-hidden="true">
@@ -183,7 +183,7 @@ export default function Transaksi() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-[14px] font-medium text-text-primary truncate capitalize">{tx.description || tx.category}</div>
-                      <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate capitalize">{tx.category} &middot; {new Date(tx.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</div>
+                      <div className="block md:hidden text-[12px] text-text-tertiary mt-0.5 truncate capitalize">{tx.category} &middot; {new Date((tx.date || tx.created_at).slice(0, 10) + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</div>
                     </div>
                   </div>
                   <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max capitalize">{tx.category}</span>
