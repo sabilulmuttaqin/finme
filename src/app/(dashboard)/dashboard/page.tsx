@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [userName, setUserName] = useState("Pengguna");
+  const [userTelegram, setUserTelegram] = useState<string | null>(null);
   const supabase = createClient();
 
   const showToast = (msg: string) => {
@@ -34,7 +35,7 @@ export default function Dashboard() {
       const [txRes, bdgRes, userRes] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('budgets').select('category, limit_amount').eq('user_id', user.id),
-        supabase.from('users').select('full_name').eq('id', user.id).single()
+        supabase.from('users').select('full_name, telegram_chat_id').eq('id', user.id).single()
       ]);
         
       if (txRes.data) setTransactions(txRes.data);
@@ -47,6 +48,9 @@ export default function Dashboard() {
         setUserName(userRes.data.full_name);
       } else {
         setUserName(user.email?.split('@')[0] || "Pengguna");
+      }
+      if (userRes.data?.telegram_chat_id) {
+        setUserTelegram(userRes.data.telegram_chat_id);
       }
       setIsLoading(false);
     }, [supabase]);
@@ -81,16 +85,58 @@ export default function Dashboard() {
     }
   };
 
-  const highestExpenseCategory = useMemo(() => {
+  const dailyInsight = useMemo(() => {
     if (!transactions.length) return null;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const todayTx = transactions.filter(t => t.type === 'expense' && new Date(t.created_at) >= today);
+    const yesterdayTx = transactions.filter(t => t.type === 'expense' && new Date(t.created_at) >= yesterday && new Date(t.created_at) < today);
+    
+    const todayTotal = todayTx.reduce((s,t) => s + t.amount, 0);
+    const yesterdayTotal = yesterdayTx.reduce((s,t) => s + t.amount, 0);
+    
     const catMap: Record<string, number> = {};
-    transactions.filter(t => t.type === 'expense').forEach(t => {
+    todayTx.forEach(t => {
       catMap[t.category] = (catMap[t.category] || 0) + t.amount;
     });
-    const entries = Object.entries(catMap);
-    if (!entries.length) return null;
-    entries.sort((a, b) => b[1] - a[1]);
-    return { name: entries[0][0], amount: entries[0][1] };
+    let topCat = "";
+    let topCatAmount = 0;
+    for (const [cat, amt] of Object.entries(catMap)) {
+      if (amt > topCatAmount) {
+        topCatAmount = amt;
+        topCat = cat;
+      }
+    }
+
+    if (todayTotal === 0 && yesterdayTotal === 0) {
+      return { text: "Belum ada pengeluaran hari ini maupun kemarin. Bagus! Tetap pertahankan kebiasaan hemat Anda.", template: "Halo AI, apa tips untuk mempertahankan pengeluaran nol hari ini?" };
+    }
+
+    const formatRupiah = (num: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
+
+    if (todayTotal > yesterdayTotal && yesterdayTotal > 0) {
+      const diff = todayTotal - yesterdayTotal;
+      return { 
+        text: `Pengeluaran hari ini (<strong>${formatRupiah(todayTotal)}</strong>) lebih tinggi ${formatRupiah(diff)} dari kemarin. Pengeluaran terbesar Anda ada di kategori <strong>${topCat}</strong> (${formatRupiah(topCatAmount)}). Hati-hati jangan sampai overbudget ya!`,
+        template: `Halo AI, pengeluaran saya hari ini naik jadi ${formatRupiah(todayTotal)} terutama di kategori ${topCat}. Ada saran untuk mengerem pengeluaran ini?`
+      };
+    } else if (todayTotal < yesterdayTotal) {
+      const diff = yesterdayTotal - todayTotal;
+      return {
+        text: `Bagus! Pengeluaran Anda hari ini (<strong>${formatRupiah(todayTotal)}</strong>) lebih hemat ${formatRupiah(diff)} dibandingkan kemarin. ${topCat ? `Pengeluaran terbesar ada di kategori <strong>${topCat}</strong> sebesar ${formatRupiah(topCatAmount)}.` : ''} Pertahankan tren positif ini!`,
+        template: `Halo AI, hari ini saya berhasil berhemat dan hanya keluar ${formatRupiah(todayTotal)}. Beri saya motivasi agar besok bisa lebih hemat lagi!`
+      };
+    } else if (yesterdayTotal === 0 && todayTotal > 0) {
+      return {
+        text: `Pengeluaran Anda hari ini tercatat sebesar <strong>${formatRupiah(todayTotal)}</strong>, dengan yang paling besar di kategori <strong>${topCat}</strong> (${formatRupiah(topCatAmount)}). Yuk, kontrol agar tidak terlalu besar!`,
+        template: `Halo AI, hari ini saya keluar uang ${formatRupiah(todayTotal)} untuk ${topCat}. Apakah ini termasuk wajar?`
+      };
+    }
+
+    return null;
   }, [transactions]);
 
 
@@ -282,24 +328,28 @@ export default function Dashboard() {
         </article>
       </section>
 
-      <section className="bg-linear-to-br from-[#1C1917] to-[#292524] border border-[#3a3633] rounded-xl p-6 text-[#FAFAF9] mb-6" aria-label="AI Weekly Insight">
+      <section className="bg-linear-to-br from-[#1C1917] to-[#292524] border border-[#3a3633] rounded-xl p-6 text-[#FAFAF9] mb-6" aria-label="AI Daily Insight">
         <div className="flex items-center justify-between mb-4">
           <div className="text-[16px] font-semibold flex items-center gap-2 text-[#FAFAF9] [&>svg]:text-primary">
             <StarIcon width="18" height="18" aria-hidden="true" />
-            Weekly Financial Insight
+            Daily Financial Insight
           </div>
           <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary-surface text-primary">AI Insight</span>
         </div>
         <p className="text-[13px] leading-[1.7] text-[#D6D3D1] [&>strong]:text-[#FAFAF9] [&>strong]:font-semibold">
-          {highestExpenseCategory ? (
-            <>Pengeluaran terbesar Anda sejauh ini adalah di kategori <strong>{highestExpenseCategory.name}</strong> sebesar <strong>{formatRp(highestExpenseCategory.amount)}</strong>. Pastikan untuk selalu memantau kategori ini agar pengeluaran Anda tetap terkontrol. Terus semangat berhemat!</>
+          {dailyInsight ? (
+            <span dangerouslySetInnerHTML={{ __html: dailyInsight.text }}></span>
           ) : (
-            <>Belum ada data pengeluaran yang cukup untuk dianalisis oleh AI. Catat pengeluaran pertama Anda via Telegram!</>
+            <>Belum ada data pengeluaran yang cukup hari ini untuk dianalisis oleh AI. Catat pengeluaran pertama Anda via Telegram!</>
           )}
         </p>
         <div className="flex gap-2 mt-4">
-          <button className="text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20" type="button">Lihat Detail</button>
-          <button className="text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20" type="button">Tanya AI</button>
+          <Link href="/analitik" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Lihat Detail</Link>
+          {userTelegram ? (
+            <a href={`https://t.me/trackinguangsab_bot?text=${encodeURIComponent(dailyInsight?.template || "Halo AI, tolong berikan insight keuangan saya hari ini.")}`} target="_blank" rel="noreferrer" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Tanya AI</a>
+          ) : (
+            <Link href="/pengaturan/umum" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Tanya AI</Link>
+          )}
         </div>
       </section>
 
