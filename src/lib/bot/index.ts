@@ -187,7 +187,7 @@ Makanan, Transportasi, Hiburan, Langganan, Belanja, Kesehatan, Pendidikan, Pemas
 Buka FinMe Web, lalu Pengaturan, salin kode OTP
 Ketik: /link KODE-OTP
 
-⚠️ Batas: *10 pesan AI per hari*
+⚠️ Batas: *20 pesan AI per hari*
 
 💡 *Tips:* Sebut tanggal relatif seperti "kemarin" atau "tadi pagi" dan AI akan otomatis menyesuaikan tanggal transaksi!`,
     { parse_mode: "Markdown" }
@@ -265,8 +265,8 @@ bot.on("message:text", async (ctx) => {
     lastDate = todayDate;
   }
 
-  if (currentCount >= 10) {
-    await ctx.reply("Maaf, kamu sudah mencapai batas limit 10 pesan AI hari ini. Silakan coba lagi besok ya! 🙏");
+  if (currentCount >= 20) {
+    await ctx.reply("Maaf, kamu sudah mencapai batas limit 20 pesan AI hari ini. Silakan coba lagi besok ya! 🙏");
     return;
   }
 
