@@ -88,9 +88,11 @@ bot.on("message:text", async (ctx) => {
   // 2. Fetch session history
   let { data: session } = await supabase
     .from("ai_chat_sessions")
-    .select("id, history")
+    .select("id, history, daily_message_count, last_message_date")
     .eq("user_id", user.id)
     .single();
+
+  const todayDate = new Date().toISOString().split('T')[0];
 
   if (!session) {
     const { data: newSession } = await supabase
@@ -98,11 +100,27 @@ bot.on("message:text", async (ctx) => {
       .insert({ 
         user_id: user.id, 
         expires_at: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-        history: []
+        history: [],
+        daily_message_count: 0,
+        last_message_date: todayDate
       })
       .select()
       .single();
     session = newSession;
+  }
+
+  // 2.5 Check Rate Limit
+  let currentCount = session?.daily_message_count || 0;
+  let lastDate = session?.last_message_date || todayDate;
+
+  if (lastDate !== todayDate) {
+    currentCount = 0;
+    lastDate = todayDate;
+  }
+
+  if (currentCount >= 10) {
+    await ctx.reply("Maaf, kamu sudah mencapai batas limit 10 pesan AI hari ini. Silakan coba lagi besok ya! 🙏");
+    return;
   }
 
   const history = Array.isArray(session?.history) ? session.history : [];
@@ -238,7 +256,11 @@ bot.on("message:text", async (ctx) => {
 
     await supabase
       .from("ai_chat_sessions")
-      .update({ history: newHistory })
+      .update({ 
+        history: newHistory,
+        daily_message_count: currentCount + 1,
+        last_message_date: todayDate
+      })
       .eq("id", session.id);
   }
 });

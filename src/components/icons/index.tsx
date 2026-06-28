@@ -71,8 +71,42 @@ export const HeartIcon = (props: IconProps) => (
 );
 
 export const BrandLogoIcon = (props: IconProps) => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" {...props}>
-    <path d="M6 3h13v4.5H10.5v3h7v4.5h-7v6H6V3z" fill="#0F52FF" />
+  <svg width="28" height="28" viewBox="0 0 512 512" {...props}>
+    <defs>
+      <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#1E5BFF"/>
+        <stop offset="100%" stopColor="#003EBA"/>
+      </linearGradient>
+    </defs>
+    {/* Top */}
+    <path
+      d="
+        M120 150
+        Q135 120 165 120
+        H395
+        L360 180
+        Q350 198 325 198
+        H100
+        Z"
+      fill="#1D5AFF"
+    />
+    {/* Bottom */}
+    <path
+      d="
+        M235 210
+        C170 210 150 255 150 310
+        C150 355 170 395 205 445
+        L245 505
+        L285 445
+        C255 395 235 355 235 315
+        C235 270 255 245 290 245
+        H350
+        C375 245 390 235 400 215
+        L410 198
+        H255
+        Z"
+      fill="url(#grad)"
+    />
   </svg>
 );
 
