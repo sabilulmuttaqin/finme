@@ -51,7 +51,7 @@ export default function UmumPengaturan() {
               (payload) => {
                 setLastSync(Date.now());
                 if (payload.new) {
-                  const updatedUser = payload.new;
+                  const updatedUser = payload.new as any;
                   setUser(updatedUser);
                   if (updatedUser.telegram_chat_id) {
                     setOtpCode("");
