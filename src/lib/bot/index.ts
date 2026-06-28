@@ -138,7 +138,7 @@ bot.on("message:text", async (ctx) => {
       const typeText = type === "income" ? "Pemasukan" : "Pengeluaran";
       const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount || 0);
       const shortId = inserted.id.substring(0, 6);
-      botReply = `Tercatat: ${rp} untuk ${category} (${typeText}).\nKeterangan: ${description}\nID: ${shortId}`;
+      botReply = `ID: ${shortId}\nTercatat: ${rp} untuk ${category} (${typeText}).\nKeterangan: ${description}`;
       await ctx.reply(botReply);
     } 
     else if (extracted.intent === "query") {
@@ -162,16 +162,28 @@ bot.on("message:text", async (ctx) => {
     } 
     else if (extracted.intent === "delete" && extracted.transaction?.id) {
       const shortId = extracted.transaction.id;
-      const { error: delError, count } = await supabase
+      const { data: recentTxs } = await supabase
         .from("transactions")
-        .delete({ count: 'exact' })
+        .select("id")
         .eq("user_id", user.id)
-        .ilike("id", `${shortId}%`);
+        .order("created_at", { ascending: false })
+        .limit(100);
       
-      if (delError || count === 0) {
+      const targetId = recentTxs?.find(t => t.id.startsWith(shortId))?.id;
+
+      if (!targetId) {
         botReply = `Gagal menghapus, ID ${shortId} tidak ditemukan.`;
       } else {
-        botReply = `Sip, transaksi dengan ID ${shortId} berhasil dihapus!`;
+        const { error: delError, count } = await supabase
+          .from("transactions")
+          .delete({ count: 'exact' })
+          .eq("id", targetId);
+        
+        if (delError || count === 0) {
+          botReply = `Gagal menghapus, ID ${shortId} tidak ditemukan.`;
+        } else {
+          botReply = `Sip, transaksi dengan ID ${shortId} berhasil dihapus!`;
+        }
       }
       await ctx.reply(botReply);
     } 
@@ -182,16 +194,28 @@ bot.on("message:text", async (ctx) => {
       if (extracted.transaction.category) updates.category = extracted.transaction.category;
       if (extracted.transaction.description) updates.description = extracted.transaction.description;
       
-      const { error: editError } = await supabase
+      const { data: recentTxs } = await supabase
         .from("transactions")
-        .update(updates)
+        .select("id")
         .eq("user_id", user.id)
-        .ilike("id", `${shortId}%`);
+        .order("created_at", { ascending: false })
+        .limit(100);
+      
+      const targetId = recentTxs?.find(t => t.id.startsWith(shortId))?.id;
 
-      if (editError) {
+      if (!targetId) {
         botReply = `Gagal mengedit, ID ${shortId} tidak ditemukan.`;
       } else {
-        botReply = `Transaksi dengan ID ${shortId} berhasil diupdate!`;
+        const { error: editError } = await supabase
+          .from("transactions")
+          .update(updates)
+          .eq("id", targetId);
+
+        if (editError) {
+          botReply = `Gagal mengedit, ID ${shortId} tidak ditemukan.`;
+        } else {
+          botReply = `Transaksi dengan ID ${shortId} berhasil diupdate!`;
+        }
       }
       await ctx.reply(botReply);
     } else {
