@@ -11,14 +11,23 @@ export default function ProfilPengaturan() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      // In a real app we'd get the auth session. For this MVP where users might 
-      // be created via Telegram, we'll fetch the first user from the users table.
-      const { data } = await supabase.from('users').select('*').limit(1).single();
-      if (data) setUser(data);
+      // Get the authenticated user
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (authUser) {
+        // Fetch the user's data from the public.users table
+        const { data } = await supabase.from('users').select('*').eq('id', authUser.id).single();
+        if (data) {
+          setUser(data);
+        } else {
+          // If not in public users yet, set the auth user data
+          setUser({ email: authUser.email });
+        }
+      }
       setIsLoading(false);
     };
     fetchUser();
-  }, []);
+  }, [supabase]);
 
   const cardClass = "bg-surface border border-border rounded-xl";
   const cardHeaderClass = "px-5 py-4 border-b border-border";

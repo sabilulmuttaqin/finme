@@ -15,7 +15,6 @@ bot.command("link", async (ctx) => {
 
   const supabase = createServerClient();
   
-  // Find web user with this OTP
   const { data: webUser, error: findError } = await supabase
     .from("users")
     .select("id, telegram_sync_token_expires")
@@ -32,13 +31,11 @@ bot.command("link", async (ctx) => {
     return;
   }
 
-  // Clear chatId from any temporary users to avoid UNIQUE constraint violation
   await supabase
     .from("users")
     .update({ telegram_chat_id: null })
     .eq("telegram_chat_id", chatId);
 
-  // Link to the web user
   const { error: updateError } = await supabase
     .from("users")
     .update({ 
@@ -59,9 +56,9 @@ bot.command("link", async (ctx) => {
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text;
   const chatId = ctx.chat.id.toString();
-
-  // 1. Dapatkan user dari database berdasarkan chat_id
   const supabase = createServerClient();
+
+  // 1. Get or create user
   let { data: user, error: userError } = await supabase
     .from("users")
     .select("id")
@@ -69,7 +66,6 @@ bot.on("message:text", async (ctx) => {
     .single();
 
   if (userError || !user) {
-    // Auto-register first user
     const { data: newUser, error: createError } = await supabase
       .from("users")
       .insert({ email: `user_${chatId}@telegram.local`, telegram_chat_id: chatId })
@@ -82,43 +78,143 @@ bot.on("message:text", async (ctx) => {
     }
     user = newUser;
     await ctx.reply("Selamat datang di FinMe! Akun Telegram Anda telah terhubung. Coba ketik pengeluaran pertama Anda (misal: 'beli kopi 25rb').");
-    return; // Don't process the first message as a transaction to give them a welcome greeting
+    return;
   }
 
-  // 2. Ekstrak transaksi menggunakan Groq AI
-  const extracted = await extractTransaction(text);
+  // 2. Fetch session history
+  let { data: session } = await supabase
+    .from("ai_chat_sessions")
+    .select("id, history")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!session) {
+    const { data: newSession } = await supabase
+      .from("ai_chat_sessions")
+      .insert({ 
+        user_id: user.id, 
+        expires_at: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+        history: []
+      })
+      .select()
+      .single();
+    session = newSession;
+  }
+
+  const history = Array.isArray(session?.history) ? session.history : [];
+
+  // 3. AI Extraction
+  const extracted = await extractTransaction(text, history);
   if (!extracted) {
-    await ctx.reply("Maaf, saya tidak mengerti format transaksinya. Coba ketik seperti: 'makan siang 50rb'");
+    await ctx.reply("Maaf, saya tidak mengerti. Bisa diperjelas?");
     return;
   }
 
-  // TODO: Implement OTP Link to sync Telegram and Web accounts.
-  // Bypass category check temporarily until OTP feature is done.
+  let botReply = "";
 
-  // 3. Simpan transaksi ke Supabase
-  const { error: insertError } = await supabase.from("transactions").insert({
-    user_id: user.id,
-    amount: extracted.amount,
-    category: extracted.category,
-    type: extracted.type,
-    description: extracted.description,
-    is_manual_web: false,
-  });
+  // 4. Handle Intents
+  try {
+    if (extracted.intent === "chat" || extracted.intent === "ask_more_info") {
+      botReply = extracted.reply_text || "Maaf, aku kurang paham maksudmu.";
+      await ctx.reply(botReply);
+    } 
+    else if (extracted.intent === "insert" && extracted.transaction) {
+      const { amount, category, type, description } = extracted.transaction;
+      const { data: inserted, error: insertError } = await supabase.from("transactions").insert({
+        user_id: user.id,
+        amount: amount || 0,
+        category: category || "Lainnya",
+        type: type || "expense",
+        description: description || "",
+        is_manual_web: false,
+      }).select("id").single();
 
-  if (insertError) {
-    console.error("Gagal simpan:", insertError);
-    await ctx.reply("Waduh, gagal menyimpan transaksi ke database. Coba lagi nanti ya.");
-    return;
+      if (insertError) throw insertError;
+
+      const typeText = type === "income" ? "Pemasukan" : "Pengeluaran";
+      const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount || 0);
+      const shortId = inserted.id.substring(0, 6);
+      botReply = `Tercatat: ${rp} untuk ${category} (${typeText}).\nKeterangan: ${description}\nID: ${shortId}`;
+      await ctx.reply(botReply);
+    } 
+    else if (extracted.intent === "query") {
+      // Basic query, just fetch last 5 for now to show context awareness
+      const { data: items } = await supabase
+        .from("transactions")
+        .select("id, amount, description, type")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+        
+      if (!items || items.length === 0) {
+        botReply = "Belum ada data transaksi.";
+      } else {
+        botReply = "Berikut beberapa transaksi terakhirmu:\n" + items.map(t => {
+          const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(t.amount);
+          return `- [${t.id.substring(0,6)}] ${t.description} (${rp})`;
+        }).join("\n");
+      }
+      await ctx.reply(botReply);
+    } 
+    else if (extracted.intent === "delete" && extracted.transaction?.id) {
+      const shortId = extracted.transaction.id;
+      const { error: delError, count } = await supabase
+        .from("transactions")
+        .delete({ count: 'exact' })
+        .eq("user_id", user.id)
+        .ilike("id", `${shortId}%`);
+      
+      if (delError || count === 0) {
+        botReply = `Gagal menghapus, ID ${shortId} tidak ditemukan.`;
+      } else {
+        botReply = `Sip, transaksi dengan ID ${shortId} berhasil dihapus!`;
+      }
+      await ctx.reply(botReply);
+    } 
+    else if (extracted.intent === "edit" && extracted.transaction?.id) {
+      const shortId = extracted.transaction.id;
+      const updates: any = {};
+      if (extracted.transaction.amount) updates.amount = extracted.transaction.amount;
+      if (extracted.transaction.category) updates.category = extracted.transaction.category;
+      if (extracted.transaction.description) updates.description = extracted.transaction.description;
+      
+      const { error: editError } = await supabase
+        .from("transactions")
+        .update(updates)
+        .eq("user_id", user.id)
+        .ilike("id", `${shortId}%`);
+
+      if (editError) {
+        botReply = `Gagal mengedit, ID ${shortId} tidak ditemukan.`;
+      } else {
+        botReply = `Transaksi dengan ID ${shortId} berhasil diupdate!`;
+      }
+      await ctx.reply(botReply);
+    } else {
+      botReply = "Maaf, perintah tidak dikenali.";
+      await ctx.reply(botReply);
+    }
+  } catch (err: any) {
+    console.error("Bot Handle Error:", err);
+    botReply = "Waduh, ada kesalahan sistem saat memproses permintaanmu.";
+    await ctx.reply(botReply);
   }
 
-  // 4. Beri feedback sukses ke Telegram
-  const typeText = extracted.type === "income" ? "Pemasukan" : "Pengeluaran";
-  const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(extracted.amount);
-  
-  await ctx.reply(`Tercatat: ${rp} untuk ${extracted.category} (${typeText}).\nKeterangan: ${extracted.description}`);
+  // 5. Update session history
+  if (session && botReply) {
+    const newHistory = [
+      ...history,
+      { role: "user", content: text },
+      { role: "assistant", content: botReply }
+    ].slice(-10); // Keep last 10 messages
+
+    await supabase
+      .from("ai_chat_sessions")
+      .update({ history: newHistory })
+      .eq("id", session.id);
+  }
 });
 
-// Fallback untuk media non-teks
 bot.on("message:photo", async (ctx) => {
   await ctx.reply("Maaf, saat ini saya baru bisa membaca teks. Yuk, ketik langsung pengeluaranmu!");
 });

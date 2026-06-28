@@ -16,7 +16,13 @@ export default function Transaksi() {
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      let query = supabase.from('transactions').select('*');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      let query = supabase.from('transactions').select('*').eq('user_id', user.id);
       
       if (activeTab === 'Pemasukan') query = query.eq('type', 'income');
       if (activeTab === 'Pengeluaran') query = query.eq('type', 'expense');

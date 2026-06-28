@@ -24,9 +24,15 @@ export default function Dashboard() {
   };
 
   const fetchData = useCallback(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
       const [txRes, bdgRes] = await Promise.all([
-        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-        supabase.from('budgets').select('category, limit_amount')
+        supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('budgets').select('category, limit_amount').eq('user_id', user.id)
       ]);
         
       if (txRes.data) setTransactions(txRes.data);

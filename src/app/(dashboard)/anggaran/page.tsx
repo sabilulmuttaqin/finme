@@ -24,9 +24,15 @@ export default function Anggaran() {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const { data: trx } = await supabase.from('transactions').select('*').eq('type', 'expense');
-      const { data: bdg } = await supabase.from('budgets').select('*');
-      const { data: cat } = await supabase.from('categories').select('name, type');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: trx } = await supabase.from('transactions').select('*').eq('type', 'expense').eq('user_id', user.id);
+      const { data: bdg } = await supabase.from('budgets').select('*').eq('user_id', user.id);
+      const { data: cat } = await supabase.from('categories').select('name, type').eq('user_id', user.id);
       
       if (trx) setTransactions(trx);
       if (cat) setDbCategories(cat.filter(c => c.type !== 'income').map(c => c.name.toLowerCase()));
