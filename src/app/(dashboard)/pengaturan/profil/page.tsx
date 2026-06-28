@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function ProfilPengaturan() {
   const [user, setUser] = useState<any>(null);
+  const [fullName, setFullName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -19,6 +21,7 @@ export default function ProfilPengaturan() {
         const { data } = await supabase.from('users').select('*').eq('id', authUser.id).single();
         if (data) {
           setUser(data);
+          setFullName(data.full_name || "");
         } else {
           // If not in public users yet, set the auth user data
           setUser({ email: authUser.email });
@@ -39,6 +42,20 @@ export default function ProfilPengaturan() {
   const formInputClass = "bg-surface-secondary border border-border rounded-lg px-4 py-2.5 text-[14px] text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all";
   const formInputReadOnlyClass = `${formInputClass} !bg-surface !border-transparent opacity-80 cursor-default focus:!border-transparent focus:!ring-0`;
   const btnGhostClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-transparent text-text-secondary hover:bg-surface-secondary hover:text-text-primary [&>svg]:w-4 [&>svg]:h-4";
+  const btnPrimaryClass = "inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-[14px] transition-colors duration-200 cursor-pointer bg-primary text-white hover:bg-primary-hover shadow-sm disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const handleSave = async () => {
+    if (!user?.id) return;
+    setIsSaving(true);
+    const { error } = await supabase.from('users').update({ full_name: fullName }).eq('id', user.id);
+    if (!error) {
+       setUser({ ...user, full_name: fullName });
+       alert("Profil berhasil diperbarui.");
+    } else {
+       alert("Gagal memperbarui profil: " + error.message);
+    }
+    setIsSaving(false);
+  };
 
   return (
     <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8" id="main-content">
@@ -68,9 +85,28 @@ export default function ProfilPengaturan() {
                       <label className={formLabelClass} htmlFor="email">Email</label>
                       <input type="email" id="email" className={formInputReadOnlyClass} defaultValue={user.email} readOnly />
                     </div>
-                    <button className={btnGhostClass} type="button" aria-label="Edit email">
-                      <EditIcon aria-hidden="true" />
-                      Edit
+                  </div>
+                  <div className={formRowClass}>
+                    <div className={formGroupClass}>
+                      <label className={formLabelClass} htmlFor="fullName">Nama Lengkap</label>
+                      <input 
+                        type="text" 
+                        id="fullName" 
+                        className={formInputClass} 
+                        value={fullName} 
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Nama dari Telegram atau bebas"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button 
+                      className={btnPrimaryClass} 
+                      type="button" 
+                      onClick={handleSave}
+                      disabled={isSaving || fullName === (user.full_name || "")}
+                    >
+                      {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
                     </button>
                   </div>
                 </>

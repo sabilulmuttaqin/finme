@@ -36,12 +36,15 @@ bot.command("link", async (ctx) => {
     .update({ telegram_chat_id: null })
     .eq("telegram_chat_id", chatId);
 
+  const fullName = `${ctx.from?.first_name || ""} ${ctx.from?.last_name || ""}`.trim() || null;
+
   const { error: updateError } = await supabase
     .from("users")
     .update({ 
       telegram_chat_id: chatId,
       telegram_sync_token: null,
-      telegram_sync_token_expires: null
+      telegram_sync_token_expires: null,
+      full_name: fullName
     })
     .eq("id", webUser.id);
 
@@ -66,9 +69,10 @@ bot.on("message:text", async (ctx) => {
     .single();
 
   if (userError || !user) {
+    const fullName = `${ctx.from?.first_name || ""} ${ctx.from?.last_name || ""}`.trim() || null;
     const { data: newUser, error: createError } = await supabase
       .from("users")
-      .insert({ email: `user_${chatId}@telegram.local`, telegram_chat_id: chatId })
+      .insert({ email: `user_${chatId}@telegram.local`, telegram_chat_id: chatId, full_name: fullName })
       .select("id")
       .single();
     

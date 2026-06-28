@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [budgets, setBudgets] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [userName, setUserName] = useState("Pengguna");
   const supabase = createClient();
 
   const showToast = (msg: string) => {
@@ -30,9 +31,10 @@ export default function Dashboard() {
         return;
       }
 
-      const [txRes, bdgRes] = await Promise.all([
+      const [txRes, bdgRes, userRes] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-        supabase.from('budgets').select('category, limit_amount').eq('user_id', user.id)
+        supabase.from('budgets').select('category, limit_amount').eq('user_id', user.id),
+        supabase.from('users').select('full_name').eq('id', user.id).single()
       ]);
         
       if (txRes.data) setTransactions(txRes.data);
@@ -40,6 +42,11 @@ export default function Dashboard() {
         const bdgMap: Record<string, number> = {};
         bdgRes.data.forEach(b => bdgMap[b.category] = b.limit_amount);
         setBudgets(bdgMap);
+      }
+      if (userRes.data?.full_name) {
+        setUserName(userRes.data.full_name);
+      } else {
+        setUserName(user.email?.split('@')[0] || "Pengguna");
       }
       setIsLoading(false);
     }, [supabase]);
@@ -136,6 +143,14 @@ export default function Dashboard() {
     return { lineChartData, donutData, categoryColors };
   }, [transactions]);
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 11) return "Selamat Pagi";
+    if (hour < 15) return "Selamat Siang";
+    if (hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  }, []);
+
   // Shared classes
   const btnClass = "inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-sm text-[13px] font-medium transition-colors duration-150 min-h-[44px] cursor-pointer";
   const btnPrimary = `${btnClass} bg-primary text-white hover:bg-primary-dark border-none`;
@@ -152,16 +167,10 @@ export default function Dashboard() {
 
   return (
     <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8" id="main-content">
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-border rounded-sm text-[12px] text-text-secondary mb-6" role="status" aria-live="polite">
-        <span className="w-2 h-2 rounded-full bg-success animate-pulse" aria-hidden="true"></span>
-        Realtime terhubung via Supabase
-        <span className="ml-auto font-mono font-variant-numeric:tabular-nums">Terakhir sinkron: 2 detik lalu</span>
-      </div>
-
       <header className="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <div>
-          <h1 className="text-[24px] font-bold tracking-[-0.02em]">Dashboard</h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">Juni 2026 &middot; Ringkasan keuangan bulan berjalan</p>
+          <h1 className="text-[24px] font-bold tracking-[-0.02em] capitalize">{greeting}, {userName}</h1>
+          <p className="text-[13px] text-text-secondary mt-0.5">Berikut ringkasan keuangan Anda sejauh ini.</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button className={btnPrimary} type="button" onClick={() => setIsModalOpen(true)}>

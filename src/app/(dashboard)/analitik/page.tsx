@@ -44,20 +44,34 @@ export default function Analitik() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // Split transactions by month
-    const thisMonthTx = transactions.filter(t => {
-      const d = new Date(t.created_at);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    let startMs = new Date(currentYear, currentMonth, 1).getTime(); // default Bulan Ini
+    if (timeRange === "Minggu Ini") {
+      const d = new Date();
+      d.setDate(d.getDate() - d.getDay());
+      startMs = d.getTime();
+    } else if (timeRange === "3 Bulan") {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 3);
+      startMs = d.getTime();
+    } else if (timeRange === "6 Bulan") {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 6);
+      startMs = d.getTime();
+    } else if (timeRange === "1 Tahun") {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 1);
+      startMs = d.getTime();
+    }
+
+    const currentPeriodTx = transactions.filter(t => new Date(t.created_at).getTime() >= startMs);
+    const lastPeriodTx = transactions.filter(t => {
+      const txTime = new Date(t.created_at).getTime();
+      const diff = now.getTime() - startMs;
+      return txTime >= (startMs - diff) && txTime < startMs;
     });
 
-    const lastMonthTx = transactions.filter(t => {
-      const d = new Date(t.created_at);
-      return d.getMonth() === (currentMonth - 1 + 12) % 12 && 
-             d.getFullYear() === (currentMonth === 0 ? currentYear - 1 : currentYear);
-    });
-
-    const expensesThisMonth = thisMonthTx.filter(t => t.type === 'expense');
-    const expensesLastMonth = lastMonthTx.filter(t => t.type === 'expense');
+    const expensesThisMonth = currentPeriodTx.filter(t => t.type === 'expense');
+    const expensesLastMonth = lastPeriodTx.filter(t => t.type === 'expense');
 
     const totalExpenseThisMonth = expensesThisMonth.reduce((s, t) => s + t.amount, 0);
     const totalExpenseLastMonth = expensesLastMonth.reduce((s, t) => s + t.amount, 0);
@@ -149,7 +163,7 @@ export default function Analitik() {
       metrics: { avgPerDay, highestDayAmount, highestDayDate, topCat, topCatAmount, savings },
       barData, lineData, categoryBreakdown, top5
     };
-  }, [transactions]);
+  }, [transactions, timeRange]);
 
   // Shared classes
   const metricCardClass = "bg-surface border border-border rounded-xl px-6 py-5 flex flex-col gap-2 transition-shadow duration-200 hover:shadow-md";

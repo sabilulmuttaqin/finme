@@ -7,11 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function Transaksi() {
   const [activeTab, setActiveTab] = useState("Semua");
-  const [filterBulan, setFilterBulan] = useState("Juni 2026");
+  const [filterBulan, setFilterBulan] = useState("Semua Waktu");
   const [filterKategori, setFilterKategori] = useState("Semua Kategori");
   const [filterUrutkan, setFilterUrutkan] = useState("Terbaru");
+  const [searchQuery, setSearchQuery] = useState("");
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -29,10 +31,28 @@ export default function Transaksi() {
       
       if (filterKategori !== 'Semua Kategori') query = query.eq('category', filterKategori);
       
+      if (searchQuery) query = query.or(`description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`);
+
       if (filterUrutkan === 'Terbaru') query = query.order('created_at', { ascending: false });
       if (filterUrutkan === 'Terlama') query = query.order('created_at', { ascending: true });
       if (filterUrutkan === 'Terbesar') query = query.order('amount', { ascending: false });
       if (filterUrutkan === 'Terkecil') query = query.order('amount', { ascending: true });
+
+      if (filterUrutkan === 'Terkecil') query = query.order('amount', { ascending: true });
+
+      if (filterBulan && filterBulan !== 'Semua Waktu') {
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        const parts = filterBulan.split(" ");
+        if (parts.length === 2) {
+          const monthIdx = monthNames.indexOf(parts[0]);
+          const year = parseInt(parts[1]);
+          if (monthIdx !== -1 && !isNaN(year)) {
+            const startDate = new Date(year, monthIdx, 1).toISOString();
+            const endDate = new Date(year, monthIdx + 1, 0, 23, 59, 59, 999).toISOString();
+            query = query.gte('created_at', startDate).lte('created_at', endDate);
+          }
+        }
+      }
 
       const { data } = await query;
       if (data) setTransactions(data);
@@ -51,9 +71,18 @@ export default function Transaksi() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeTab, filterBulan, filterKategori, filterUrutkan]);
+  }, [activeTab, filterBulan, filterKategori, filterUrutkan, searchQuery]);
+
+  const handleDeleteTx = async (id: string) => {
+    if (confirm("Hapus transaksi ini?")) {
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (!error) {
+        setTransactions(transactions.filter(t => t.id !== id));
+      }
+    }
+  };
   
-  const txPageItemClass = "grid grid-cols-[1fr_auto] md:grid-cols-[100px_1fr_120px_120px_140px] gap-4 px-6 py-4 items-center border-b border-border-light hover:bg-surface-secondary/50 transition-colors duration-150 last:border-b-0 cursor-pointer";
+  const txPageItemClass = "group grid grid-cols-[1fr_auto] md:grid-cols-[100px_1fr_120px_120px_140px] gap-4 px-6 py-4 items-center border-b border-border-light hover:bg-surface-secondary/50 transition-colors duration-150 last:border-b-0 cursor-pointer";
   const txIconClass = "w-10 h-10 rounded-full flex items-center justify-center shrink-0 [&>svg]:w-5 [&>svg]:h-5";
   const txIconExpenseClass = `${txIconClass} bg-danger-surface text-danger`;
   const txIconIncomeClass = `${txIconClass} bg-success-surface text-success`;
@@ -81,7 +110,14 @@ export default function Transaksi() {
           </div>
           <div className="relative flex items-center w-full md:w-auto [&>svg]:absolute [&>svg]:left-3 [&>svg]:w-4 [&>svg]:h-4 [&>svg]:text-text-tertiary [&>svg]:pointer-events-none">
             <SearchIcon aria-hidden="true" />
-            <input type="text" className="bg-surface border border-border shadow-sm rounded-lg pl-9 pr-4 py-2.5 text-[13px] text-text-primary w-full md:w-[260px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-text-tertiary" placeholder="Cari transaksi..." aria-label="Cari transaksi" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-surface border border-border shadow-sm rounded-lg pl-9 pr-4 py-2.5 text-[13px] text-text-primary w-full md:w-[260px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-text-tertiary" 
+              placeholder="Cari transaksi..." 
+              aria-label="Cari transaksi" 
+            />
           </div>
         </div>
       </header>
@@ -91,7 +127,7 @@ export default function Transaksi() {
           label="Bulan" 
           value={filterBulan} 
           onChange={setFilterBulan} 
-          options={["Juni 2026", "Mei 2026", "April 2026", "Maret 2026", "Februari 2026", "Januari 2026"]} 
+          options={["Semua Waktu", "Juni 2026", "Mei 2026", "April 2026", "Maret 2026", "Februari 2026", "Januari 2026"]} 
         />
         <FilterDropdown 
           label="Kategori" 
@@ -148,8 +184,17 @@ export default function Transaksi() {
                     {tx.is_manual_web ? <InfoIcon aria-hidden="true" /> : <MessageIcon aria-hidden="true" />}
                     {tx.is_manual_web ? 'Manual' : 'Telegram'}
                   </span>
-                  <div className={`text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap ${tx.type === 'income' ? 'text-success' : 'text-text-primary'}`}>
-                    {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString('id-ID')}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className={`text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap ${tx.type === 'income' ? 'text-success' : 'text-text-primary'}`}>
+                      {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString('id-ID')}
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteTx(tx.id); }}
+                      className="text-[11px] text-danger opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                      type="button"
+                    >
+                      Hapus
+                    </button>
                   </div>
                 </div>
               ))

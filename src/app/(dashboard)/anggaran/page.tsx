@@ -68,6 +68,29 @@ export default function Anggaran() {
     }
   };
 
+  const handleDeleteCategory = async (catName: string) => {
+    if (confirm(`PERINGATAN: Menghapus kategori "${catName}" akan ikut menghapus SEMUA TRANSAKSI yang menggunakan kategori ini secara permanen! Apakah Anda yakin?`)) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      await Promise.all([
+        supabase.from('categories').delete().eq('user_id', user.id).ilike('name', catName),
+        supabase.from('budgets').delete().eq('user_id', user.id).ilike('category', catName),
+        supabase.from('transactions').delete().eq('user_id', user.id).ilike('category', catName)
+      ]);
+      
+      showToast(`Kategori ${catName} dan transaksinya dihapus.`);
+      
+      // Update local state optimistic
+      setTransactions(transactions.filter(t => t.category.toLowerCase() !== catName.toLowerCase()));
+      setBudgets(budgets.filter(b => b.category.toLowerCase() !== catName.toLowerCase()));
+      setDbCategories(dbCategories.filter(c => c.toLowerCase() !== catName.toLowerCase()));
+      const newLimits = {...limits};
+      delete newLimits[catName];
+      setLimits(newLimits);
+    }
+  };
+
   const getIconForCategory = (name: string) => {
     const n = name.toLowerCase();
     if (n.includes('makan') || n.includes('minum') || n.includes('kopi')) return <CoffeeIcon />;
@@ -163,7 +186,7 @@ export default function Anggaran() {
           const textClass = isDanger ? 'text-danger' : isWarning ? 'text-warning' : 'text-primary';
 
           return (
-            <div key={b.category} className={budgetCardClass}>
+            <div key={b.category} className={`${budgetCardClass} group`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className={budgetIconClass} aria-hidden="true">
@@ -185,6 +208,13 @@ export default function Anggaran() {
                     onBlur={(e) => handleSaveLimit(b.category, Number(e.target.value))}
                     className={budgetInputClass} 
                   />
+                  <button 
+                    type="button" 
+                    onClick={() => handleDeleteCategory(b.category)} 
+                    className="text-[11px] text-danger mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                  >
+                    Hapus
+                  </button>
                 </div>
               </div>
               <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-3">

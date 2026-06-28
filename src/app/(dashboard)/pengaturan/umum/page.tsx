@@ -16,8 +16,20 @@ export default function UmumPengaturan() {
 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [lastSync, setLastSync] = useState(Date.now());
+  const [syncText, setSyncText] = useState("Baru saja");
 
   const supabase = createClient();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const diff = Math.floor((Date.now() - lastSync) / 1000);
+      if (diff < 5) setSyncText("Baru saja");
+      else if (diff < 60) setSyncText(`${diff} detik lalu`);
+      else setSyncText(`${Math.floor(diff/60)} menit lalu`);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lastSync]);
 
   useEffect(() => {
     let channel: any;
@@ -35,13 +47,16 @@ export default function UmumPengaturan() {
           channel = supabase.channel('user-settings-changes')
             .on(
               'postgres_changes',
-              { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${authUser.id}` },
+              { event: '*', schema: 'public', table: 'users', filter: `id=eq.${authUser.id}` },
               (payload) => {
-                const updatedUser = payload.new;
-                setUser(updatedUser);
-                if (updatedUser.telegram_chat_id) {
-                  setOtpCode("");
-                  setShowOtpModal(false);
+                setLastSync(Date.now());
+                if (payload.new) {
+                  const updatedUser = payload.new;
+                  setUser(updatedUser);
+                  if (updatedUser.telegram_chat_id) {
+                    setOtpCode("");
+                    setShowOtpModal(false);
+                  }
                 }
               }
             )
@@ -139,6 +154,12 @@ export default function UmumPengaturan() {
 
   return (
     <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8" id="main-content">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-border rounded-sm text-[12px] text-text-secondary mb-6" role="status" aria-live="polite">
+        <span className="w-2 h-2 rounded-full bg-success animate-pulse" aria-hidden="true"></span>
+        Realtime terhubung via Supabase
+        <span className="ml-auto font-mono font-variant-numeric:tabular-nums">Terakhir sinkron: {syncText}</span>
+      </div>
+
       <div className="max-w-[800px] mx-auto w-full">
         <header className="flex items-center justify-between mb-8 gap-4 flex-wrap">
           <div>
