@@ -71,12 +71,6 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
         ]);
         
         let data = catRes.data;
-        // Jika user belum punya kategori, seed kategori default
-        if (!data || data.length === 0) {
-          await supabase.from('categories').insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: authUser.id })));
-          const { data: seeded } = await supabase.from('categories').select('name, type').eq('user_id', authUser.id);
-          data = seeded;
-        }
 
         if (data && data.length > 0) {
           setCategories(data);
@@ -156,7 +150,7 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
         </div>
         <div className="pt-5 px-6 pb-6">
           
-          <form className="grid grid-cols-2 gap-3" aria-label="Form input transaksi manual" onSubmit={handleSubmit}>
+          <form className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Form input transaksi manual" onSubmit={handleSubmit}>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="modal-desc">Deskripsi <span className="text-danger" aria-label="wajib diisi">*</span></label>
               <input ref={inputRef} className={formInputClass} type="text" id="modal-desc" placeholder="Contoh: Makan siang" value={desc} onChange={(e) => setDesc(e.target.value)} required />

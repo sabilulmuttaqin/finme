@@ -106,11 +106,8 @@ export default function Kategori() {
       // Hapus dari tabel categories
       await supabase.from('categories').delete().eq('user_id', user.id).eq('name', deleteTarget);
       
-      // Pindahkan semua transaksi ke 'Lainnya'
-      await supabase.from('transactions').update({ category: 'Lainnya' }).eq('user_id', user.id).eq('category', deleteTarget);
-      
       setRefreshTrigger(prev => prev + 1);
-      showToast("Kategori dihapus & transaksi dipindah ke 'Lainnya'!");
+      showToast("Kategori berhasil dihapus!");
     }
     setDeleteTarget(null);
   };
@@ -198,7 +195,7 @@ export default function Kategori() {
             </div>
             <h2 className="text-[18px] font-semibold text-text-primary mb-2">Hapus Kategori?</h2>
             <p className="text-[14px] text-text-secondary mb-6 leading-relaxed">
-              Apakah Anda yakin ingin menghapus kategori <span className="font-semibold text-text-primary capitalize">"{deleteTarget}"</span>? Semua transaksi yang menggunakan kategori ini akan otomatis diubah menjadi kategori <span className="font-semibold text-text-primary">"Lainnya"</span>.
+              Apakah Anda yakin ingin menghapus kategori <span className="font-semibold text-text-primary capitalize">"{deleteTarget}"</span>?
             </p>
             <div className="flex items-center justify-end gap-3">
               <button 

@@ -4,33 +4,7 @@ import { createServerClient } from "../supabase/server";
 
 export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
-// Kategori default (fallback jika user belum buat kategori)
-const DEFAULT_CATEGORIES = [
-  { name: "Makanan", type: "expense" },
-  { name: "Transportasi", type: "expense" },
-  { name: "Hiburan", type: "expense" },
-  { name: "Langganan", type: "expense" },
-  { name: "Belanja", type: "expense" },
-  { name: "Kesehatan", type: "expense" },
-  { name: "Pendidikan", type: "expense" },
-  { name: "Pemasukan", type: "income" },
-  { name: "Lainnya", type: "expense" },
-];
 
-/** Pastikan user punya kategori default, seed jika kosong */
-async function ensureDefaultCategories(supabase: any, userId: string) {
-  const { data: existing } = await supabase
-    .from("categories")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1);
-
-  if (!existing || existing.length === 0) {
-    await supabase.from("categories").insert(
-      DEFAULT_CATEGORIES.map((c) => ({ ...c, user_id: userId }))
-    );
-  }
-}
 
 /** Hitung rentang tanggal dari string seperti "today", "yesterday", "this_week" */
 function getDateRange(dateStr?: string): { from?: string; to?: string } {
@@ -229,14 +203,9 @@ bot.on("message:text", async (ctx) => {
       return;
     }
     user = newUser;
-    // Seed kategori default untuk user baru
-    await ensureDefaultCategories(supabase, user.id);
     await ctx.reply("Selamat datang di FinMe! Akun Telegram Anda telah terhubung. Coba ketik pengeluaran pertama Anda (misal: 'beli kopi 25rb').");
     return;
   }
-
-  // Pastikan user lama juga punya kategori default
-  await ensureDefaultCategories(supabase, user.id);
 
   // 2. Fetch session history
   let { data: session } = await supabase
