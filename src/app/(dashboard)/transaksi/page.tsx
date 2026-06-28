@@ -187,6 +187,10 @@ export default function Transaksi() {
                     </div>
                   </div>
                   <span className="hidden md:inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-surface-secondary text-text-secondary whitespace-nowrap max-w-max capitalize">{tx.category}</span>
+                  <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary">
+                    <WalletIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                    {tx.wallet || 'Cash'}
+                  </span>
                   <span className="hidden md:flex items-center gap-1.5 text-[12px] text-text-tertiary [&>svg]:w-3.5 [&>svg]:h-3.5">
                     {tx.is_manual_web ? <InfoIcon aria-hidden="true" /> : <MessageIcon aria-hidden="true" />}
                     {tx.is_manual_web ? 'Manual' : 'Telegram'}

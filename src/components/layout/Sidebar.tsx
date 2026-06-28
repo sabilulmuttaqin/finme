@@ -58,6 +58,10 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           <DollarIcon aria-hidden="true" />
           <span>Transaksi</span>
         </Link>
+        <Link href="/dompet" className={isActive("/dompet")}>
+          <WalletIcon aria-hidden="true" />
+          <span>Dompet</span>
+        </Link>
         <Link href="/anggaran" className={isActive("/anggaran")}>
           <WalletIcon aria-hidden="true" />
           <span>Anggaran</span>

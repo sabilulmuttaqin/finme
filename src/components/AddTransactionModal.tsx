@@ -29,8 +29,10 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
+  const [wallet, setWallet] = useState("Cash");
   const [txDate, setTxDate] = useState(toLocalDateValue(new Date()));
   const [categories, setCategories] = useState<{name: string, type: string}[]>([]);
+  const [wallets, setWallets] = useState<{name: string}[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const supabase = createClient();
 
@@ -47,6 +49,7 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
         setDesc(initialData.description || "");
         setAmount(initialData.amount ? initialData.amount.toString() : "");
         setCategory(initialData.category || "");
+        setWallet(initialData.wallet || "Cash");
         // Jika ada kolom date di data, gunakan itu; fallback ke created_at
         const rawDate = initialData.date || initialData.created_at;
         setTxDate(rawDate ? rawDate.slice(0, 10) : toLocalDateValue(new Date()));
@@ -54,15 +57,20 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
         setDesc("");
         setAmount("");
         setCategory("");
+        setWallet("Cash");
         setTxDate(toLocalDateValue(new Date()));
       }
       
-      const fetchCategories = async () => {
+      const fetchCategoriesAndWallets = async () => {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) return;
 
-        let { data } = await supabase.from('categories').select('name, type').eq('user_id', authUser.id);
+        const [catRes, walRes] = await Promise.all([
+          supabase.from('categories').select('name, type').eq('user_id', authUser.id),
+          supabase.from('wallets').select('name').eq('user_id', authUser.id)
+        ]);
         
+        let data = catRes.data;
         // Jika user belum punya kategori, seed kategori default
         if (!data || data.length === 0) {
           await supabase.from('categories').insert(DEFAULT_CATEGORIES.map(c => ({ ...c, user_id: authUser.id })));
@@ -76,9 +84,18 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
             setCategory(data[0].name);
           }
         }
+        
+        if (walRes.data && walRes.data.length > 0) {
+          setWallets(walRes.data);
+          if (!initialData || !initialData.wallet) {
+            setWallet(walRes.data[0].name);
+          }
+        } else {
+          setWallets([{name: "Cash"}]);
+        }
       };
       
-      fetchCategories();
+      fetchCategoriesAndWallets();
       if (inputRef.current) {
         setTimeout(() => inputRef.current?.focus(), 200);
       }
@@ -98,6 +115,7 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
           amount: Number(amount),
           type: categories.find(c => c.name === category)?.type || "expense",
           category: category || "Lainnya",
+          wallet: wallet || "Cash",
           date: txDate,
         }).eq('id', initialData.id);
         if (error) throw error;
@@ -109,6 +127,7 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
           amount: Number(amount),
           type: categories.find(c => c.name === category)?.type || "expense",
           category: category || "Lainnya",
+          wallet: wallet || "Cash",
           date: txDate,
           is_manual_web: true
         }]);
@@ -136,10 +155,7 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
           </button>
         </div>
         <div className="pt-5 px-6 pb-6">
-          <div className="text-[12px] text-text-tertiary mb-5 flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warning-surface text-warning uppercase tracking-[0.04em]">Terisolasi</span>
-            Data ini tidak memengaruhi saldo utama
-          </div>
+          
           <form className="grid grid-cols-2 gap-3" aria-label="Form input transaksi manual" onSubmit={handleSubmit}>
             <div className={formGroupClass}>
               <label className={formLabelClass} htmlFor="modal-desc">Deskripsi <span className="text-danger" aria-label="wajib diisi">*</span></label>
@@ -161,7 +177,7 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
                 required
               />
             </div>
-            <div className={`${formGroupClass} col-span-full`}>
+            <div className={`${formGroupClass} col-span-1`}>
               <label className={formLabelClass} htmlFor="modal-category">Kategori</label>
               <select className={selectClass} id="modal-category" value={category} onChange={(e) => setCategory(e.target.value)} disabled={categories.length === 0}>
                 {categories.length > 0 ? categories.map(c => (
@@ -169,6 +185,14 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
                 )) : (
                   <option value="">Tidak ada kategori</option>
                 )}
+              </select>
+            </div>
+            <div className={`${formGroupClass} col-span-1`}>
+              <label className={formLabelClass} htmlFor="modal-wallet">Dompet</label>
+              <select className={selectClass} id="modal-wallet" value={wallet} onChange={(e) => setWallet(e.target.value)}>
+                {wallets.map(w => (
+                  <option key={w.name} value={w.name} className="capitalize">{w.name}</option>
+                ))}
               </select>
             </div>
             <div className="col-span-full flex flex-col gap-2 mt-1">

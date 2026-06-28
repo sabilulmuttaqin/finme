@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 function AuthSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [phase, setPhase] = useState<"loading" | "success">("loading");
+  const [phase, setPhase] = useState<"loading" | "success" | "exiting">("loading");
 
   useEffect(() => {
     // Simulasi loading sebentar biar animasinya kerasa
@@ -14,21 +14,27 @@ function AuthSuccessContent() {
       setPhase("success");
     }, 1200);
 
-    // Redirect setelah sukses
+    // Mulai animasi transisi keluar (fade out)
+    const exitTimer = setTimeout(() => {
+      setPhase("exiting");
+    }, 2400);
+
+    // Redirect setelah animasi selesai
     const redirectTimer = setTimeout(() => {
       const nextUrl = searchParams.get("next") || "/dashboard";
       router.push(nextUrl);
-    }, 2500);
+    }, 2900);
 
     return () => {
       clearTimeout(loadingTimer);
+      clearTimeout(exitTimer);
       clearTimeout(redirectTimer);
     };
   }, [router, searchParams]);
 
   return (
     <div className="h-[100dvh] w-screen flex flex-col items-center justify-center bg-surface font-ui text-text-primary">
-      <div className="flex flex-col items-center text-center max-w-sm px-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className={`flex flex-col items-center text-center max-w-sm px-6 transition-all duration-500 ease-in-out ${phase === "exiting" ? "opacity-0 -translate-y-6 scale-95 blur-sm" : "animate-in fade-in slide-in-from-bottom-8 duration-700"}`}>
         
         {/* Animated Icon Container */}
         <div className="relative w-24 h-24 mb-8 flex items-center justify-center">

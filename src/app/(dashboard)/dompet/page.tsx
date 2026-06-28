@@ -2,19 +2,19 @@
 
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { PlusIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, TrendingUpIcon, EditIcon, TrashIcon, LaptopIcon, WarningIcon } from "@/components/icons";
+import { PlusIcon, WalletIcon, EditIcon, TrashIcon, WarningIcon } from "@/components/icons";
 import Toast from "@/components/Toast";
 import { createClient } from "@/lib/supabase/client";
 
-const AddCategoryModal = dynamic(() => import("@/components/AddCategoryModal"), { ssr: false });
+const AddWalletModal = dynamic(() => import("@/components/AddWalletModal"), { ssr: false });
 
-export default function Kategori() {
+export default function Dompet() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editData, setEditData] = useState<{ name: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const [dbWallets, setDbWallets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const supabase = createClient();
@@ -24,21 +24,21 @@ export default function Kategori() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const [txRes, catRes] = await Promise.all([
+      const [txRes, walletRes] = await Promise.all([
         supabase.from('transactions').select('*').eq('user_id', user.id),
-        supabase.from('categories').select('*').eq('user_id', user.id)
+        supabase.from('wallets').select('*').eq('user_id', user.id)
       ]);
       if (txRes.data) setTransactions(txRes.data);
-      if (catRes.data) setDbCategories(catRes.data);
+      if (walletRes.data) setDbWallets(walletRes.data);
       setIsLoading(false);
     };
 
     fetchData();
 
     const channel = supabase
-      .channel('public:kategori')
+      .channel('public:wallets')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wallets' }, () => fetchData())
       .subscribe();
 
     return () => {
@@ -46,39 +46,32 @@ export default function Kategori() {
     };
   }, [refreshTrigger]);
 
-  const categories = useMemo(() => {
-    const catMap: Record<string, any> = {};
+  const wallets = useMemo(() => {
+    const walletMap: Record<string, any> = {};
     
-    dbCategories.forEach(cat => {
-      catMap[cat.name] = { ...cat, total: 0, count: 0 };
+    dbWallets.forEach(w => {
+      walletMap[w.name] = { ...w, total: 0, count: 0 };
     });
 
     transactions.forEach(t => {
-      if (!catMap[t.category]) {
-        catMap[t.category] = { name: t.category, total: 0, count: 0, type: t.type, icon: null, color: null };
+      const wName = t.wallet || "Cash";
+      if (!walletMap[wName]) {
+        walletMap[wName] = { name: wName, total: 0, count: 0, icon: null, color: null };
       }
-      catMap[t.category].total += t.amount;
-      catMap[t.category].count += 1;
+      
+      // Calculate total: income adds, expense subtracts
+      if (t.type === 'income') {
+        walletMap[wName].total += t.amount;
+      } else {
+        walletMap[wName].total -= t.amount;
+      }
+      walletMap[wName].count += 1;
     });
 
-    return Object.values(catMap).sort((a: any, b: any) => b.total - a.total);
-  }, [transactions, dbCategories]);
+    return Object.values(walletMap).sort((a: any, b: any) => b.total - a.total);
+  }, [transactions, dbWallets]);
 
   const formatRp = (num: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
-
-  const getIconForCategory = (name: string, iconKey: string | null) => {
-    if (iconKey === 'coffee') return <CoffeeIcon />;
-    if (iconKey === 'truck') return <TruckIcon />;
-    if (iconKey === 'book') return <BookIcon />;
-    if (iconKey === 'cart') return <CartIcon />;
-    if (iconKey === 'laptop') return <LaptopIcon />;
-    const n = name.toLowerCase();
-    if (n.includes('makan') || n.includes('minum') || n.includes('kopi')) return <CoffeeIcon />;
-    if (n.includes('transpor') || n.includes('bensin') || n.includes('grab')) return <TruckIcon />;
-    if (n.includes('langgan') || n.includes('spotify') || n.includes('netflix')) return <BookIcon />;
-    if (n.includes('belanja') || n.includes('pasar') || n.includes('supermarket')) return <CartIcon />;
-    return <TrendingUpIcon />;
-  };
 
   const openAdd = () => {
     setEditData(null);
@@ -103,14 +96,14 @@ export default function Kategori() {
     if (!deleteTarget) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // Hapus dari tabel categories
-      await supabase.from('categories').delete().eq('user_id', user.id).eq('name', deleteTarget);
+      // Hapus dari tabel wallets
+      await supabase.from('wallets').delete().eq('user_id', user.id).eq('name', deleteTarget);
       
-      // Pindahkan semua transaksi ke 'Lainnya'
-      await supabase.from('transactions').update({ category: 'Lainnya' }).eq('user_id', user.id).eq('category', deleteTarget);
+      // Pindahkan semua transaksi ke 'Cash'
+      await supabase.from('transactions').update({ wallet: 'Cash' }).eq('user_id', user.id).eq('wallet', deleteTarget);
       
       setRefreshTrigger(prev => prev + 1);
-      showToast("Kategori dihapus & transaksi dipindah ke 'Lainnya'!");
+      showToast("Dompet dihapus & transaksi dipindah ke 'Cash'!");
     }
     setDeleteTarget(null);
   };
@@ -121,60 +114,57 @@ export default function Kategori() {
     <main className="flex-1 p-8 lg:ml-[260px] pt-24 lg:pt-8" id="main-content">
       <header className="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <div>
-          <h1 className="text-[24px] font-bold tracking-[-0.02em]">Kelola Kategori</h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">Tambah, edit, dan atur kategori transaksi</p>
+          <h1 className="text-[24px] font-bold tracking-[-0.02em]">Kelola Dompet</h1>
+          <p className="text-[13px] text-text-secondary mt-0.5">Tambah, edit, dan atur metode pembayaran</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button className={btnPrimaryClass} type="button" onClick={openAdd}>
             <PlusIcon aria-hidden="true" />
-            Tambah Kategori
+            Tambah Dompet
           </button>
         </div>
       </header>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Daftar kategori">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Daftar dompet">
         {isLoading ? (
-          <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Memuat kategori...</div>
-        ) : categories.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Kategori belum tersedia. Ketik pengeluaran di Telegram!</div>
-        ) : categories.map((cat, i) => (
+          <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Memuat dompet...</div>
+        ) : wallets.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-[13px] text-text-tertiary">Belum ada dompet. Tambahkan sekarang!</div>
+        ) : wallets.map((w, i) => (
             <div key={i} className="bg-surface border border-border rounded-xl p-5 hover:shadow-sm transition-all duration-200 group">
               <div className="flex items-start justify-between mb-4">
                 <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-200 [&>svg]:w-6 [&>svg]:h-6"
-                  style={{
-                    backgroundColor: cat.color ? `${cat.color}20` : (cat.type === 'income' ? 'var(--color-success-surface)' : 'var(--color-primary-surface)'),
-                    color: cat.color || (cat.type === 'income' ? 'var(--color-success)' : 'var(--color-primary)')
-                  }}
+                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-200 [&>svg]:w-6 [&>svg]:h-6 bg-primary/10 text-primary"
                   aria-hidden="true"
                 >
-                  {getIconForCategory(cat.name, cat.icon)}
+                  <WalletIcon />
                 </div>
                 <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                  <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-surface-secondary hover:text-text-primary transition-colors cursor-pointer border-none bg-transparent" aria-label={`Edit kategori ${cat.name}`} onClick={() => openEdit(cat.name)}>
+                  <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-surface-secondary hover:text-text-primary transition-colors cursor-pointer border-none bg-transparent" aria-label={`Edit dompet ${w.name}`} onClick={() => openEdit(w.name)}>
                     <EditIcon className="w-4 h-4" />
                   </button>
-                  <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-danger-surface hover:text-danger transition-colors cursor-pointer border-none bg-transparent" aria-label={`Hapus kategori ${cat.name}`} onClick={() => handleDeleteConfirm(cat.name)}>
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
+                  {w.name !== "Cash" && (
+                    <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-danger-surface hover:text-danger transition-colors cursor-pointer border-none bg-transparent" aria-label={`Hapus dompet ${w.name}`} onClick={() => handleDeleteConfirm(w.name)}>
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="text-[17px] font-semibold text-text-primary mb-1 capitalize truncate" title={cat.name}>{cat.name}</div>
+              <div className="text-[17px] font-semibold text-text-primary mb-1 capitalize truncate" title={w.name}>{w.name}</div>
               <div className="text-[13px] text-text-secondary flex items-center justify-between mb-4">
-                <span>{cat.count} transaksi</span>
-                <span className={cat.type === 'income' ? 'text-success' : 'text-danger'}>{cat.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</span>
+                <span>{w.count} transaksi</span>
               </div>
               <div className="pt-4 border-t border-border flex items-center justify-between">
-                <span className="text-[12px] text-text-tertiary uppercase tracking-wider font-medium">Total Perputaran</span>
-                <span className={`font-mono text-[15px] font-bold ${cat.type === 'income' ? 'text-success' : 'text-text-primary'}`}>
-                  {cat.type === 'income' ? '+' : ''}{formatRp(cat.total)}
+                <span className="text-[12px] text-text-tertiary uppercase tracking-wider font-medium">Saldo (Estimasi)</span>
+                <span className={`font-mono text-[15px] font-bold ${w.total >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {w.total > 0 ? '+' : ''}{formatRp(w.total)}
                 </span>
               </div>
             </div>
           ))}
       </section>
 
-      <AddCategoryModal 
+      <AddWalletModal 
         isOpen={isModalOpen} 
         onClose={(successMsg) => {
           setIsModalOpen(false);
@@ -196,9 +186,9 @@ export default function Kategori() {
             <div className="w-12 h-12 rounded-full bg-danger-surface text-danger flex items-center justify-center mb-4 [&>svg]:w-6 [&>svg]:h-6">
               <WarningIcon />
             </div>
-            <h2 className="text-[18px] font-semibold text-text-primary mb-2">Hapus Kategori?</h2>
+            <h2 className="text-[18px] font-semibold text-text-primary mb-2">Hapus Dompet?</h2>
             <p className="text-[14px] text-text-secondary mb-6 leading-relaxed">
-              Apakah Anda yakin ingin menghapus kategori <span className="font-semibold text-text-primary capitalize">"{deleteTarget}"</span>? Semua transaksi yang menggunakan kategori ini akan otomatis diubah menjadi kategori <span className="font-semibold text-text-primary">"Lainnya"</span>.
+              Apakah Anda yakin ingin menghapus dompet <span className="font-semibold text-text-primary capitalize">"{deleteTarget}"</span>? Semua transaksi yang menggunakan dompet ini akan otomatis diubah menjadi dompet <span className="font-semibold text-text-primary">"Cash"</span>.
             </p>
             <div className="flex items-center justify-end gap-3">
               <button 

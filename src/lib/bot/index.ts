@@ -294,7 +294,7 @@ bot.on("message:text", async (ctx) => {
       await ctx.reply(botReply);
     } 
     else if (extracted.intent === "insert" && extracted.transaction) {
-      const { amount, category, type, description, date } = extracted.transaction;
+      const { amount, category, type, description, date, wallet } = extracted.transaction;
 
       // Tentukan tanggal: pakai date dari AI jika ada, fallback ke hari ini (WIB)
       const txDate = date || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -305,6 +305,7 @@ bot.on("message:text", async (ctx) => {
         category: category || "Lainnya",
         type: type || "expense",
         description: description || "",
+        wallet: wallet || "Cash",
         date: txDate,
         is_manual_web: false,
       }).select("id").single();
@@ -315,7 +316,7 @@ bot.on("message:text", async (ctx) => {
       const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount || 0);
       const shortId = inserted.id.substring(0, 6);
       const dateLabel = new Date(txDate + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
-      botReply = `✅ Tercatat!\nID: ${shortId}\nTanggal: ${dateLabel}\nJumlah: ${rp} (${typeText})\nKategori: ${category}\nDeskripsi: ${description}`;
+      botReply = `✅ Tercatat!\nID: ${shortId}\nTanggal: ${dateLabel}\nJumlah: ${rp} (${typeText})\nKategori: ${category}\nDompet: ${wallet || "Cash"}\nDeskripsi: ${description}`;
       await ctx.reply(botReply);
     } 
     else if (extracted.intent === "query") {
@@ -383,11 +384,11 @@ bot.on("message:text", async (ctx) => {
     } 
     else if (extracted.intent === "edit" && extracted.transaction?.id) {
       const shortId = extracted.transaction.id;
-      const hasChanges = extracted.transaction.amount || extracted.transaction.category || extracted.transaction.description;
+      const hasChanges = extracted.transaction.amount || extracted.transaction.category || extracted.transaction.description || extracted.transaction.wallet;
 
       const { data: recentTxs } = await supabase
         .from("transactions")
-        .select("id, description, amount, category, type")
+        .select("id, description, amount, category, type, wallet")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(100);
@@ -401,9 +402,7 @@ bot.on("message:text", async (ctx) => {
         // Tampilkan detail transaksi dulu, lalu minta instruksi spesifik
         const rp = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(targetTx.amount);
         const typeLabel = targetTx.type === "income" ? "Pemasukan" : "Pengeluaran";
-        botReply = `Detail transaksi [${shortId}]:\n📝 ${targetTx.description || "-"}\n🏷️ ${targetTx.category}\n💰 ${rp} (${typeLabel})\n\nMau diubah apa? Contoh:\n• "ganti deskripsi jadi makan siang"
-• "ubah jumlah jadi 30000"
-• "kategori jadi Transportasi"`;
+        botReply = `Detail transaksi [${shortId}]:\n📝 ${targetTx.description || "-"}\n🏷️ ${targetTx.category}\n💳 ${targetTx.wallet || "Cash"}\n💰 ${rp} (${typeLabel})\n\nMau diubah apa? Contoh:\n• "ganti deskripsi jadi makan siang"\n• "ubah jumlah jadi 30000"\n• "ubah dompet jadi gopay"`;
         await ctx.reply(botReply);
       } else {
         // Ada perubahan langsung dari AI, eksekusi update
@@ -411,6 +410,7 @@ bot.on("message:text", async (ctx) => {
         if (extracted.transaction.amount) updates.amount = extracted.transaction.amount;
         if (extracted.transaction.category) updates.category = extracted.transaction.category;
         if (extracted.transaction.description) updates.description = extracted.transaction.description;
+        if (extracted.transaction.wallet) updates.wallet = extracted.transaction.wallet;
 
         const { error: editError } = await supabase
           .from("transactions")
@@ -424,6 +424,7 @@ bot.on("message:text", async (ctx) => {
           if (updates.description) changedFields.push(`deskripsi → "${updates.description}"`);
           if (updates.category) changedFields.push(`kategori → ${updates.category}`);
           if (updates.amount) changedFields.push(`jumlah → Rp${updates.amount.toLocaleString('id-ID')}`);
+          if (updates.wallet) changedFields.push(`dompet → ${updates.wallet}`);
           botReply = `✅ Transaksi [${shortId}] berhasil diupdate!\n${changedFields.join('\n')}`;
         }
         await ctx.reply(botReply);

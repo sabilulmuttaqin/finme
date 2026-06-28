@@ -15,6 +15,7 @@ export interface AIResponse {
     type?: "income" | "expense";
     description?: string;
     date?: string; // Format YYYY-MM-DD, jika user menyebut tanggal spesifik
+    wallet?: string; // Metode pembayaran (e.g. Gopay, DANA, Cash)
   };
   query?: {
     date?: string; // e.g., "today", "yesterday", "this_week", or "YYYY-MM-DD"
@@ -48,6 +49,7 @@ Aturan Utama:
    - type: "income" atau "expense".
    - category: "Makanan", "Transportasi", "Hiburan", "Langganan", "Belanja", "Pemasukan", "Kesehatan", "Pendidikan", atau "Lainnya".
    - description: Maks 5-7 kata.
+   - wallet: "Cash", "GoPay", "OVO", "DANA", "ShopeePay", atau dompet lainnya. (Default: "Cash" jika user tidak menyebutkan metode pembayaran).
    - date: (OPSIONAL) Format YYYY-MM-DD. Isi HANYA jika user menyebut tanggal/waktu tertentu:
      * "kemarin" → hitung dari hari ini (${TODAY_WIB}) dikurangi 1 hari
      * "tadi pagi", "tadi siang" → gunakan tanggal hari ini: ${TODAY_WIB}
@@ -63,13 +65,13 @@ Seluruh responmu di "reply_text" TIDAK BOLEH lebih dari 2 kalimat.
 
 Contoh JSON Output:
 
-Insert tanpa tanggal (default hari ini):
+Insert tanpa tanggal dan wallet spesifik:
 User: "beli bensin 20rb"
-Output: {"reasoning": "User catat pengeluaran bensin.", "intent": "insert", "transaction": {"amount": 20000, "type": "expense", "category": "Transportasi", "description": "Beli bensin"}}
+Output: {"reasoning": "User catat pengeluaran bensin tanpa info tanggal/dompet, maka default Cash.", "intent": "insert", "transaction": {"amount": 20000, "type": "expense", "category": "Transportasi", "description": "Beli bensin", "wallet": "Cash"}}
 
-Insert dengan tanggal relatif:
-User: "kemarin makan siang 35rb"
-Output: {"reasoning": "User catat makan kemarin, harus set tanggal kemarin.", "intent": "insert", "transaction": {"amount": 35000, "type": "expense", "category": "Makanan", "description": "Makan siang", "date": "TANGGAL_KEMARIN"}}
+Insert dengan tanggal relatif dan wallet:
+User: "kemarin makan siang 35rb pake shopeepay"
+Output: {"reasoning": "User catat makan kemarin dengan dompet ShopeePay.", "intent": "insert", "transaction": {"amount": 35000, "type": "expense", "category": "Makanan", "description": "Makan siang", "date": "TANGGAL_KEMARIN", "wallet": "ShopeePay"}}
 (Ganti TANGGAL_KEMARIN dengan tanggal sebenarnya berdasarkan hari ini: ${TODAY_WIB})
 
 Query dengan tanggal:
