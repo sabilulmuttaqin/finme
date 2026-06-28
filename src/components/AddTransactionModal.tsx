@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 
-export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boolean, onClose: (msg?: string) => void }) {
+export default function AddTransactionModal({ isOpen, onClose, initialData }: { isOpen: boolean, onClose: (msg?: string) => void, initialData?: any }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
@@ -22,15 +22,23 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
 
   useEffect(() => {
     if (isOpen) {
-      setDesc("");
-      setAmount("");
-      setCategory("");
+      if (initialData) {
+        setDesc(initialData.description || "");
+        setAmount(initialData.amount ? initialData.amount.toString() : "");
+        setCategory(initialData.category || "");
+      } else {
+        setDesc("");
+        setAmount("");
+        setCategory("");
+      }
       
       const fetchCategories = async () => {
         const { data } = await supabase.from('categories').select('name, type');
         if (data && data.length > 0) {
           setCategories(data);
-          if (data.length > 0) setCategory(data[0].name);
+          if (!initialData || !initialData.category) {
+            setCategory(data[0].name);
+          }
         }
       };
       
@@ -48,17 +56,27 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
-      const { error } = await supabase.from('transactions').insert([{
-        user_id: user.id,
-        description: desc,
-        amount: Number(amount),
-        type: categories.find(c => c.name === category)?.type || "expense",
-        category: category || "lainnya",
-        is_manual_web: true
-      }]);
-
-      if (error) throw error;
-      onClose("Transaksi manual berhasil ditambahkan!");
+      if (initialData) {
+        const { error } = await supabase.from('transactions').update({
+          description: desc,
+          amount: Number(amount),
+          type: categories.find(c => c.name === category)?.type || "expense",
+          category: category || "lainnya"
+        }).eq('id', initialData.id);
+        if (error) throw error;
+        onClose("Transaksi berhasil diperbarui!");
+      } else {
+        const { error } = await supabase.from('transactions').insert([{
+          user_id: user.id,
+          description: desc,
+          amount: Number(amount),
+          type: categories.find(c => c.name === category)?.type || "expense",
+          category: category || "lainnya",
+          is_manual_web: true
+        }]);
+        if (error) throw error;
+        onClose("Transaksi manual berhasil ditambahkan!");
+      }
     } catch (err: any) {
       alert("Gagal menambah transaksi: " + err.message);
     } finally {
@@ -74,7 +92,7 @@ export default function AddTransactionModal({ isOpen, onClose }: { isOpen: boole
     }}>
       <div className="bg-surface rounded-2xl w-full max-w-[480px] shadow-lg transform transition-transform duration-200 translate-y-0 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pt-5 px-6 pb-0">
-          <h2 id="modalTitle" className="text-[17px] font-semibold">Tambah Transaksi Manual</h2>
+          <h2 id="modalTitle" className="text-[17px] font-semibold">{initialData ? "Edit Transaksi" : "Tambah Transaksi Manual"}</h2>
           <button className="w-9 h-9 rounded-sm flex items-center justify-center text-text-tertiary transition-colors duration-150 hover:bg-surface-secondary hover:text-text-primary border-none bg-transparent cursor-pointer" onClick={() => onClose()} aria-label="Tutup modal">
             <CloseIcon className="w-[18px] h-[18px]" />
           </button>

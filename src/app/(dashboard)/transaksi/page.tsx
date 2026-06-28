@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingUpIcon, TrendingDownIcon, SearchIcon, MessageIcon, InfoIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, ChevronLeftIcon, ChevronRightIcon, WalletIcon } from "@/components/icons";
+import { TrendingUpIcon, TrendingDownIcon, SearchIcon, MessageIcon, InfoIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, ChevronLeftIcon, ChevronRightIcon, WalletIcon, EditIcon, TrashIcon } from "@/components/icons";
 import { FilterDropdown } from "@/components/FilterDropdown";
 import { createClient } from "@/lib/supabase/client";
+import Toast from "@/components/Toast";
+import AddTransactionModal from "@/components/AddTransactionModal";
 
 export default function Transaksi() {
   const [activeTab, setActiveTab] = useState("Semua");
@@ -14,6 +16,8 @@ export default function Transaksi() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [editTxData, setEditTxData] = useState<any>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -73,13 +77,15 @@ export default function Transaksi() {
     };
   }, [activeTab, filterBulan, filterKategori, filterUrutkan, searchQuery]);
 
-  const handleDeleteTx = async (id: string) => {
-    if (confirm("Hapus transaksi ini?")) {
-      const { error } = await supabase.from('transactions').delete().eq('id', id);
-      if (!error) {
-        setTransactions(transactions.filter(t => t.id !== id));
-      }
+  const handleDeleteTx = async () => {
+    if (!deleteModalId) return;
+    const { error } = await supabase.from('transactions').delete().eq('id', deleteModalId);
+    if (!error) {
+      setTransactions(transactions.filter(t => t.id !== deleteModalId));
+      setToast("Transaksi berhasil dihapus");
+      setTimeout(() => setToast(null), 3000);
     }
+    setDeleteModalId(null);
   };
   
   const txPageItemClass = "group grid grid-cols-[1fr_auto] md:grid-cols-[100px_1fr_120px_120px_140px] gap-4 px-6 py-4 items-center border-b border-border-light hover:bg-surface-secondary/50 transition-colors duration-150 last:border-b-0 cursor-pointer";
@@ -122,7 +128,7 @@ export default function Transaksi() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-col md:flex-row flex-wrap items-stretch md:items-center gap-3 mb-6 w-full">
         <FilterDropdown 
           label="Bulan" 
           value={filterBulan} 
@@ -188,12 +194,25 @@ export default function Transaksi() {
                     <div className={`text-right font-mono tabular-nums text-[14px] font-semibold whitespace-nowrap ${tx.type === 'income' ? 'text-success' : 'text-text-primary'}`}>
                       {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString('id-ID')}
                     </div>
+                  </div>
+                  
+                  {/* Action Buttons always visible */}
+                  <div className="flex items-center gap-1 justify-end ml-2">
                     <button 
-                      onClick={(e) => { e.stopPropagation(); handleDeleteTx(tx.id); }}
-                      className="text-[11px] text-danger opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                      onClick={(e) => { e.stopPropagation(); setEditTxData(tx); }}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-surface-secondary hover:text-text-primary transition-colors cursor-pointer border-none bg-transparent"
                       type="button"
+                      aria-label="Edit"
                     >
-                      Hapus
+                      <EditIcon className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setDeleteModalId(tx.id); }}
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-danger-surface hover:text-danger transition-colors cursor-pointer border-none bg-transparent"
+                      type="button"
+                      aria-label="Hapus"
+                    >
+                      <TrashIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -216,6 +235,38 @@ export default function Transaksi() {
           <ChevronRightIcon aria-hidden="true" />
         </button>
       </nav>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalId && (
+        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl w-full max-w-[400px] shadow-lg p-6 text-center">
+            <h2 className="text-[17px] font-semibold text-text-primary mb-2">Hapus Transaksi</h2>
+            <p className="text-[14px] text-text-secondary mb-6">Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.</p>
+            <div className="flex gap-3 w-full">
+              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-surface-secondary text-text-primary hover:bg-border/50 transition-colors" onClick={() => setDeleteModalId(null)}>Batal</button>
+              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-danger text-white hover:bg-danger/90 transition-colors" onClick={handleDeleteTx}>Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editTxData && (
+        <AddTransactionModal 
+          isOpen={true} 
+          initialData={editTxData}
+          onClose={(msg) => {
+            setEditTxData(null);
+            if (msg) {
+              setToast(msg);
+              setTimeout(() => setToast(null), 3000);
+            }
+          }} 
+        />
+      )}
+
+      {/* Custom Toast */}
+      {toast && <Toast message={toast} />}
     </main>
   );
 }

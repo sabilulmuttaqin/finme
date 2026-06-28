@@ -35,7 +35,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <BrandLogoIcon aria-hidden="true" className="shrink-0" />
             <span className="text-[18px] font-bold tracking-[-0.02em]">Fin<span className="text-primary">Me</span></span>
           </div>
-          <button type="button" onClick={onToggleCollapse} className="bg-none border-none cursor-pointer text-text-tertiary p-1 flex items-center justify-center hover:bg-surface-secondary rounded-md" aria-label="Toggle Sidebar">
+          <button type="button" onClick={onToggleCollapse} className="lg:hidden bg-none border-none cursor-pointer text-text-tertiary p-1 flex items-center justify-center hover:bg-surface-secondary rounded-md" aria-label="Toggle Sidebar">
             <SidebarToggleIcon className={`transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`} />
           </button>
         </div>

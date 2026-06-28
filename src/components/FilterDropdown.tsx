@@ -33,7 +33,7 @@ export function FilterDropdown({
   }, []);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative w-full md:w-auto" ref={dropdownRef}>
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}

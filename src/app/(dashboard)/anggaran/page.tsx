@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { WalletIcon, TrendingDownIcon, CheckIcon, SaveIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, LaptopIcon } from "@/components/icons";
+import { WalletIcon, TrendingDownIcon, CheckIcon, SaveIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon, LaptopIcon, TrashIcon } from "@/components/icons";
 import { FilterDropdown } from "@/components/FilterDropdown";
 import Toast from "@/components/Toast";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,7 @@ export default function Anggaran() {
   const [limits, setLimits] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [deleteCatModal, setDeleteCatModal] = useState<string | null>(null);
   const supabase = createClient();
 
   const showToast = (message: string) => {
@@ -68,27 +69,27 @@ export default function Anggaran() {
     }
   };
 
-  const handleDeleteCategory = async (catName: string) => {
-    if (confirm(`PERINGATAN: Menghapus kategori "${catName}" akan ikut menghapus SEMUA TRANSAKSI yang menggunakan kategori ini secara permanen! Apakah Anda yakin?`)) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      await Promise.all([
-        supabase.from('categories').delete().eq('user_id', user.id).ilike('name', catName),
-        supabase.from('budgets').delete().eq('user_id', user.id).ilike('category', catName),
-        supabase.from('transactions').delete().eq('user_id', user.id).ilike('category', catName)
-      ]);
-      
-      showToast(`Kategori ${catName} dan transaksinya dihapus.`);
-      
-      // Update local state optimistic
-      setTransactions(transactions.filter(t => t.category.toLowerCase() !== catName.toLowerCase()));
-      setBudgets(budgets.filter(b => b.category.toLowerCase() !== catName.toLowerCase()));
-      setDbCategories(dbCategories.filter(c => c.toLowerCase() !== catName.toLowerCase()));
-      const newLimits = {...limits};
-      delete newLimits[catName];
-      setLimits(newLimits);
-    }
+  const handleDeleteCategory = async () => {
+    const catName = deleteCatModal;
+    if (!catName) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    await Promise.all([
+      supabase.from('categories').delete().eq('user_id', user.id).ilike('name', catName),
+      supabase.from('budgets').delete().eq('user_id', user.id).ilike('category', catName),
+      supabase.from('transactions').delete().eq('user_id', user.id).ilike('category', catName)
+    ]);
+    
+    showToast(`Kategori ${catName} dan transaksinya dihapus.`);
+    
+    setTransactions(transactions.filter(t => t.category.toLowerCase() !== catName.toLowerCase()));
+    setBudgets(budgets.filter(b => b.category.toLowerCase() !== catName.toLowerCase()));
+    setDbCategories(dbCategories.filter(c => c.toLowerCase() !== catName.toLowerCase()));
+    const newLimits = {...limits};
+    delete newLimits[catName];
+    setLimits(newLimits);
+    setDeleteCatModal(null);
   };
 
   const getIconForCategory = (name: string) => {
@@ -138,7 +139,7 @@ export default function Anggaran() {
           <h1 className="text-[24px] font-bold tracking-[-0.02em]">Anggaran</h1>
           <p className="text-[13px] text-text-secondary mt-0.5">Kelola batas pengeluaran bulanan per kategori</p>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
           <FilterDropdown
             value={filterBulan}
             onChange={setFilterBulan}
@@ -197,23 +198,26 @@ export default function Anggaran() {
                     <div className="text-[12px] text-text-tertiary mt-0.5">Terpakai {formatRp(b.used)}</div>
                   </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <label htmlFor={`limit-${b.category}`} className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Limit (Rp)</label>
-                  <input 
-                    type="number" 
-                    id={`limit-${b.category}`} 
-                    value={limits[b.category] || ""} 
-                    placeholder="0"
-                    onChange={(e) => setLimits({...limits, [b.category]: Number(e.target.value)})}
-                    onBlur={(e) => handleSaveLimit(b.category, Number(e.target.value))}
-                    className={budgetInputClass} 
-                  />
+                <div className="flex items-end gap-2">
+                  <div className="flex flex-col items-end">
+                    <label htmlFor={`limit-${b.category}`} className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Limit (Rp)</label>
+                    <input 
+                      type="number" 
+                      id={`limit-${b.category}`} 
+                      value={limits[b.category] || ""} 
+                      placeholder="0"
+                      onChange={(e) => setLimits({...limits, [b.category]: Number(e.target.value)})}
+                      onBlur={(e) => handleSaveLimit(b.category, Number(e.target.value))}
+                      className={budgetInputClass} 
+                    />
+                  </div>
                   <button 
                     type="button" 
-                    onClick={() => handleDeleteCategory(b.category)} 
-                    className="text-[11px] text-danger mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                    onClick={() => setDeleteCatModal(b.category)} 
+                    className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-danger-surface hover:text-danger transition-colors cursor-pointer border-none bg-transparent mb-0.5"
+                    aria-label="Hapus"
                   >
-                    Hapus
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -228,6 +232,21 @@ export default function Anggaran() {
           )
         })}
       </section>
+
+      {/* Delete Category Confirmation Modal */}
+      {deleteCatModal && (
+        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-surface rounded-2xl w-full max-w-[400px] shadow-lg p-6 text-center">
+            <h2 className="text-[17px] font-semibold text-text-primary mb-2">Hapus Kategori?</h2>
+            <p className="text-[14px] text-text-secondary mb-2">Anda akan menghapus kategori <strong>{deleteCatModal}</strong>.</p>
+            <p className="text-[13px] text-danger bg-danger-surface px-3 py-2 rounded mb-6 border border-danger/20">Semua transaksi dengan kategori ini juga akan ikut terhapus secara permanen!</p>
+            <div className="flex gap-3 w-full">
+              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-surface-secondary text-text-primary hover:bg-border/50 transition-colors" onClick={() => setDeleteCatModal(null)}>Batal</button>
+              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-danger text-white hover:bg-danger/90 transition-colors" onClick={handleDeleteCategory}>Ya, Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && <Toast message={toast} />}
     </main>
