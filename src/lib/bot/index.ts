@@ -150,55 +150,56 @@ bot.command("help", async (ctx) => {
 📝 *MENCATAT TRANSAKSI*
 Ketik pengeluaran atau pemasukan secara natural:
 
-• \`beli kopi 25rb\`
-• \`makan siang 35.000\`
-• \`gaji masuk 5jt\`
-• \`kemarin nonton bioskop 50rb\`
-• \`bensin 20rb tadi pagi\`
+- beli kopi 25rb
+- makan siang 35.000
+- gaji masuk 5jt
+- kemarin nonton bioskop 50rb
+- bensin 20rb tadi pagi
 
 ━━━━━━━━━━━━━━━━━━━━━
 🔍 *MELIHAT TRANSAKSI*
-• \`tampilkan transaksi hari ini\`
-• \`lihat pengeluaran kemarin\`
-• \`transaksi minggu ini\`
-• \`transaksi bulan ini\`
+- tampilkan transaksi hari ini
+- lihat pengeluaran kemarin
+- transaksi minggu ini
+- transaksi bulan ini
 
 ━━━━━━━━━━━━━━━━━━━━━
 ✏️ *EDIT TRANSAKSI*
-Gunakan ID pendek \\(6 karakter\\) yang muncul saat mencatat:
+Gunakan ID pendek (6 karakter) yang muncul saat mencatat:
 
-1. Ketik: \`edit a1b2c3\`
+1. Ketik: edit a1b2c3
 2. Bot tampilkan detail transaksi
-3. Balas dengan perubahan yang diinginkan:
-   • \`ganti deskripsi jadi makan malam\`
-   • \`ubah jumlah jadi 50000\`
-   • \`kategori jadi Transportasi\`
+3. Balas dengan perubahan:
+   - ganti deskripsi jadi makan malam
+   - ubah jumlah jadi 50000
+   - kategori jadi Transportasi
 
 ━━━━━━━━━━━━━━━━━━━━━
 🗑️ *HAPUS TRANSAKSI*
-• \`hapus a1b2c3\`
-• \`delete a1b2c3\`
+- hapus a1b2c3
 
 ━━━━━━━━━━━━━━━━━━━━━
 🏷️ *KATEGORI TERSEDIA*
-Makanan · Transportasi · Hiburan
-Langganan · Belanja · Kesehatan
-Pendidikan · Pemasukan · Lainnya
+Makanan, Transportasi, Hiburan, Langganan, Belanja, Kesehatan, Pendidikan, Pemasukan, Lainnya
 
 ━━━━━━━━━━━━━━━━━━━━━
 🔗 *HUBUNGKAN KE WEB*
-Buka FinMe Web → Pengaturan → Salin kode OTP
-lalu ketik: \`/link KODE_OTP\`
+Buka FinMe Web, lalu Pengaturan, salin kode OTP
+Ketik: /link KODE\_OTP
 
 ⚠️ Batas: *10 pesan AI per hari*
 
-💡 *Tips:* Kamu bisa sebut tanggal relatif seperti "kemarin", "tadi pagi" dan AI akan otomatis menyesuaikan tanggal transaksinya\\!`,
-    { parse_mode: "MarkdownV2" }
+💡 *Tips:* Sebut tanggal relatif seperti "kemarin" atau "tadi pagi" dan AI akan otomatis menyesuaikan tanggal transaksi!`,
+    { parse_mode: "Markdown" }
   );
 });
 
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text;
+
+  // Skip jika pesan adalah command (mulai dengan /) — sudah ditangani handler khusus
+  if (text.startsWith("/")) return;
+
   const chatId = ctx.chat.id.toString();
   const supabase = createServerClient();
 

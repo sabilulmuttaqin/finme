@@ -14,7 +14,6 @@ export default function Anggaran() {
   const [limits, setLimits] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
-  const [deleteCatModal, setDeleteCatModal] = useState<string | null>(null);
   const supabase = createClient();
 
   const showToast = (message: string) => {
@@ -69,28 +68,7 @@ export default function Anggaran() {
     }
   };
 
-  const handleDeleteCategory = async () => {
-    const catName = deleteCatModal;
-    if (!catName) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    await Promise.all([
-      supabase.from('categories').delete().eq('user_id', user.id).ilike('name', catName),
-      supabase.from('budgets').delete().eq('user_id', user.id).ilike('category', catName),
-      supabase.from('transactions').delete().eq('user_id', user.id).ilike('category', catName)
-    ]);
-    
-    showToast(`Kategori ${catName} dan transaksinya dihapus.`);
-    
-    setTransactions(transactions.filter(t => t.category.toLowerCase() !== catName.toLowerCase()));
-    setBudgets(budgets.filter(b => b.category.toLowerCase() !== catName.toLowerCase()));
-    setDbCategories(dbCategories.filter(c => c.toLowerCase() !== catName.toLowerCase()));
-    const newLimits = {...limits};
-    delete newLimits[catName];
-    setLimits(newLimits);
-    setDeleteCatModal(null);
-  };
+ 
 
   const getIconForCategory = (name: string) => {
     const n = name.toLowerCase();
@@ -211,14 +189,7 @@ export default function Anggaran() {
                       className={budgetInputClass} 
                     />
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setDeleteCatModal(b.category)} 
-                    className="w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:bg-danger-surface hover:text-danger transition-colors cursor-pointer border-none bg-transparent mb-0.5"
-                    aria-label="Hapus"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </button>
+                  
                 </div>
               </div>
               <div className="w-full h-2 bg-surface-secondary rounded-full overflow-hidden mb-3">
@@ -232,21 +203,6 @@ export default function Anggaran() {
           )
         })}
       </section>
-
-      {/* Delete Category Confirmation Modal */}
-      {deleteCatModal && (
-        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4">
-          <div className="bg-surface rounded-2xl w-full max-w-[400px] shadow-lg p-6 text-center">
-            <h2 className="text-[17px] font-semibold text-text-primary mb-2">Hapus Kategori?</h2>
-            <p className="text-[14px] text-text-secondary mb-2">Anda akan menghapus kategori <strong>{deleteCatModal}</strong>.</p>
-            <p className="text-[13px] text-danger bg-danger-surface px-3 py-2 rounded mb-6 border border-danger/20">Semua transaksi dengan kategori ini juga akan ikut terhapus secara permanen!</p>
-            <div className="flex gap-3 w-full">
-              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-surface-secondary text-text-primary hover:bg-border/50 transition-colors" onClick={() => setDeleteCatModal(null)}>Batal</button>
-              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-danger text-white hover:bg-danger/90 transition-colors" onClick={handleDeleteCategory}>Ya, Hapus</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {toast && <Toast message={toast} />}
     </main>
