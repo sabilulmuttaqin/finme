@@ -6,6 +6,7 @@ import { FilterDropdown } from "@/components/FilterDropdown";
 import { createClient } from "@/lib/supabase/client";
 import Toast from "@/components/Toast";
 import AddTransactionModal from "@/components/AddTransactionModal";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function Transaksi() {
   const [activeTab, setActiveTab] = useState("Semua");
@@ -242,18 +243,16 @@ export default function Transaksi() {
       </nav>
 
       {/* Delete Confirmation Modal */}
-      {deleteModalId && (
-        <div className="fixed inset-0 bg-stone-900/50 z-[100] flex items-center justify-center p-4">
-          <div className="bg-surface rounded-2xl w-full max-w-[400px] shadow-lg p-6 text-center">
-            <h2 className="text-[17px] font-semibold text-text-primary mb-2">Hapus Transaksi</h2>
-            <p className="text-[14px] text-text-secondary mb-6">Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan.</p>
-            <div className="flex gap-3 w-full">
-              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-surface-secondary text-text-primary hover:bg-border/50 transition-colors" onClick={() => setDeleteModalId(null)}>Batal</button>
-              <button className="flex-1 px-4 py-2.5 rounded-lg font-medium text-[14px] bg-danger text-white hover:bg-danger/90 transition-colors" onClick={handleDeleteTx}>Hapus</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!deleteModalId}
+        title="Hapus Transaksi"
+        description="Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        variant="danger"
+        onConfirm={handleDeleteTx}
+        onCancel={() => setDeleteModalId(null)}
+      />
 
       {/* Edit Modal */}
       {editTxData && (

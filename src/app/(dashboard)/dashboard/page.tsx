@@ -389,7 +389,10 @@ export default function Dashboard() {
         <article className={cardClass}>
           <div className="flex items-center justify-between mb-5">
             <div><div className="text-[15px] font-semibold">Transaksi Terakhir</div><div className="text-[12px] text-text-tertiary font-normal">Via Telegram Bot</div></div>
-            <Link href="/transaksi" className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary hover:bg-border transition-colors">Lihat Semua</Link>
+            <Link href="/transaksi" className={`${btnGhost} px-3 py-1.5 min-h-[36px] text-[12px]`}>
+              <TrendingUpIcon width="14" height="14" className="w-3.5 h-3.5" aria-hidden="true" />
+              Lihat Semua
+            </Link>
           </div>
           <div className="flex flex-col">
             {isLoading ? (

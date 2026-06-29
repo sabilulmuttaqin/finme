@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
+import { CustomSelect, type DropdownOption } from "@/components/CustomSelect";
 
 // Helper: format tanggal lokal ke YYYY-MM-DD untuk input[type=date]
 const toLocalDateValue = (date: Date) => {
@@ -173,21 +174,28 @@ export default function AddTransactionModal({ isOpen, onClose, initialData }: { 
             </div>
             <div className={`${formGroupClass} col-span-1`}>
               <label className={formLabelClass} htmlFor="modal-category">Kategori</label>
-              <select className={selectClass} id="modal-category" value={category} onChange={(e) => setCategory(e.target.value)} disabled={categories.length === 0}>
-                {categories.length > 0 ? categories.map(c => (
-                  <option key={c.name} value={c.name} className="capitalize">{c.name} - {c.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</option>
-                )) : (
-                  <option value="">Tidak ada kategori</option>
-                )}
-              </select>
+              <CustomSelect
+                id="modal-category"
+                value={category}
+                onChange={setCategory}
+                disabled={categories.length === 0}
+                placeholder="Pilih kategori"
+                options={categories.map(c => ({
+                  value: c.name,
+                  label: c.name,
+                  sublabel: c.type === 'income' ? 'Pemasukan' : 'Pengeluaran'
+                } as DropdownOption))}
+              />
             </div>
             <div className={`${formGroupClass} col-span-1`}>
               <label className={formLabelClass} htmlFor="modal-wallet">Dompet</label>
-              <select className={selectClass} id="modal-wallet" value={wallet} onChange={(e) => setWallet(e.target.value)}>
-                {wallets.map(w => (
-                  <option key={w.name} value={w.name} className="capitalize">{w.name}</option>
-                ))}
-              </select>
+              <CustomSelect
+                id="modal-wallet"
+                value={wallet}
+                onChange={setWallet}
+                placeholder="Pilih dompet"
+                options={wallets.map(w => ({ value: w.name, label: w.name } as DropdownOption))}
+              />
             </div>
             <div className="col-span-full flex flex-col gap-2 mt-1">
               {categories.length === 0 && (
