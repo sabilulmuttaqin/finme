@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { DownloadIcon, PlusIcon, WalletIcon, TrendingUpIcon, ArrowUpIcon, TrendingDownIcon, ArrowDownIcon, StarIcon, SettingsIcon, CoffeeIcon, TruckIcon, BookIcon, CartIcon } from "@/components/icons";
 import Toast from "@/components/Toast";
 import { createClient } from "@/lib/supabase/client";
-import { LineChart, Line, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid } from "recharts";
 
 const AddTransactionModal = dynamic(() => import("@/components/AddTransactionModal"), { ssr: false });
 
@@ -253,25 +253,72 @@ export default function Dashboard() {
         </article>
       </section>
 
+    <section className="bg-linear-to-br from-[#1C1917] to-[#292524] border border-[#3a3633] rounded-xl p-6 text-[#FAFAF9] mb-6" aria-label="AI Daily Insight">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[16px] font-semibold flex items-center gap-2 text-[#FAFAF9] [&>svg]:text-primary">
+            <StarIcon width="18" height="18" aria-hidden="true" />
+            Daily Financial Insight
+          </div>
+          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary-surface text-primary">AI Insight</span>
+        </div>
+        <p className="text-[13px] leading-[1.7] text-[#D6D3D1] [&>strong]:text-[#FAFAF9] [&>strong]:font-semibold">
+          {dailyInsight ? (
+            <span dangerouslySetInnerHTML={{ __html: dailyInsight.text }}></span>
+          ) : (
+            <>Belum ada data pengeluaran yang cukup hari ini untuk dianalisis oleh AI. Catat pengeluaran pertama Anda via Telegram!</>
+          )}
+        </p>
+        <div className="flex gap-2 mt-4">
+          <Link href="/analitik" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Lihat Detail</Link>
+          {userTelegram ? (
+            <a href={`https://t.me/trackinguangsab_bot?text=${encodeURIComponent(dailyInsight?.template || "Halo AI, tolong berikan insight keuangan saya hari ini.")}`} target="_blank" rel="noreferrer" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Tanya AI</a>
+          ) : (
+            <Link href="/pengaturan/umum" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Tanya AI</Link>
+          )}
+        </div>
+      </section>
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6" aria-label="Grafik analitik">
         <article className={cardClass}>
           <div className="flex items-center justify-between mb-5">
             <div><div className="text-[15px] font-semibold">Tren Transaksi Harian</div><div className="text-[12px] text-text-tertiary font-normal">30 hari terakhir</div></div>
-            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary">Line Chart</span>
+            <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-secondary text-text-secondary">Bar Chart</span>
           </div>
-          <div className="w-full h-[200px]" role="img" aria-label="Grafik garis tren transaksi harian">
+          <div className="w-full h-[220px]" role="img" aria-label="Grafik batang tren transaksi harian">
             {lineChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineChartData} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
-                  <XAxis dataKey="name" tick={{fontSize: 10, fill: 'var(--color-text-tertiary)'}} axisLine={false} tickLine={false} />
-                  <RechartsTooltip 
+                <BarChart
+                  data={lineChartData}
+                  layout="vertical"
+                  margin={{ top: 0, right: 8, left: 0, bottom: 0 }}
+                  barSize={8}
+                  barGap={2}
+                >
+                  <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="var(--color-border-light)" />
+                  <XAxis
+                    type="number"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 9, fill: 'var(--color-text-tertiary)' }}
+                    tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(0)}jt` : v >= 1000 ? `${(v/1000).toFixed(0)}rb` : String(v)}
+                    width={36}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: 'var(--color-text-tertiary)' }}
+                    width={32}
+                  />
+                  <RechartsTooltip
+                    cursor={{ fill: 'var(--color-surface-secondary)', opacity: 0.5 }}
                     contentStyle={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '12px' }}
                     itemStyle={{ color: 'var(--color-text-primary)' }}
-                    formatter={(val: any, name: any) => [formatRp(Number(val)), String(name) === 'expense' ? "Pengeluaran" : "Pemasukan"]}
+                    formatter={(val: any, name: any) => [formatRp(Number(val)), String(name) === 'expense' ? 'Pengeluaran' : 'Pemasukan']}
                   />
-                  <Line type="monotone" dataKey="expense" name="expense" stroke="#FF6B00" strokeWidth={2} dot={{ r: 3, fill: "#FF6B00", strokeWidth: 2, stroke: "var(--color-surface)" }} activeDot={{ r: 5 }} />
-                  <Line type="monotone" dataKey="income" name="income" stroke="#16A34A" strokeWidth={2} dot={{ r: 3, fill: "#16A34A", strokeWidth: 2, stroke: "var(--color-surface)" }} activeDot={{ r: 5 }} />
-                </LineChart>
+                  <Bar dataKey="expense" name="expense" fill="#FF6B00" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="income" name="income" fill="#16A34A" radius={[0, 3, 3, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[12px] text-text-tertiary">Belum ada data transaksi</div>
@@ -306,9 +353,11 @@ export default function Dashboard() {
                       <RechartsTooltip formatter={(val: any) => formatRp(Number(val))} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px' }} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-[15px] font-bold text-text-primary">{formatRp(donutData.reduce((s, d) => s + d.value, 0)).replace('Rp', '')}</span>
-                    <span className="text-[10px] text-text-tertiary">Total</span>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
+                    <span className="text-[9px] font-medium text-text-tertiary uppercase tracking-widest leading-none">Total</span>
+                    <span className="text-[13px] font-bold text-text-primary leading-tight tabular-nums text-center px-1">
+                      {formatRp(donutData.reduce((s, d) => s + d.value, 0)).replace('Rp\u00a0', '').replace('Rp ', '')}
+                    </span>
                   </div>
                 </>
               ) : (
@@ -328,30 +377,7 @@ export default function Dashboard() {
         </article>
       </section>
 
-      <section className="bg-linear-to-br from-[#1C1917] to-[#292524] border border-[#3a3633] rounded-xl p-6 text-[#FAFAF9] mb-6" aria-label="AI Daily Insight">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-[16px] font-semibold flex items-center gap-2 text-[#FAFAF9] [&>svg]:text-primary">
-            <StarIcon width="18" height="18" aria-hidden="true" />
-            Daily Financial Insight
-          </div>
-          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary-surface text-primary">AI Insight</span>
-        </div>
-        <p className="text-[13px] leading-[1.7] text-[#D6D3D1] [&>strong]:text-[#FAFAF9] [&>strong]:font-semibold">
-          {dailyInsight ? (
-            <span dangerouslySetInnerHTML={{ __html: dailyInsight.text }}></span>
-          ) : (
-            <>Belum ada data pengeluaran yang cukup hari ini untuk dianalisis oleh AI. Catat pengeluaran pertama Anda via Telegram!</>
-          )}
-        </p>
-        <div className="flex gap-2 mt-4">
-          <Link href="/analitik" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Lihat Detail</Link>
-          {userTelegram ? (
-            <a href={`https://t.me/trackinguangsab_bot?text=${encodeURIComponent(dailyInsight?.template || "Halo AI, tolong berikan insight keuangan saya hari ini.")}`} target="_blank" rel="noreferrer" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Tanya AI</a>
-          ) : (
-            <Link href="/pengaturan/umum" className="inline-flex items-center text-[12px] px-3.5 py-2 rounded-sm bg-white/10 text-[#FAFAF9] border border-white/10 transition-colors duration-150 min-h-[36px] cursor-pointer hover:bg-white/20">Tanya AI</Link>
-          )}
-        </div>
-      </section>
+     
 
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6" aria-label="Budget dan transaksi">
         <article className={cardClass}>
