@@ -19,6 +19,8 @@ export interface AIResponse {
   };
   query?: {
     date?: string; // e.g., "today", "yesterday", "this_week", or "YYYY-MM-DD"
+    date_from?: string; // Format YYYY-MM-DD, untuk range query
+    date_to?: string;   // Format YYYY-MM-DD, untuk range query
   };
 }
 
@@ -36,13 +38,14 @@ Aturan Utama:
 1. FIELD REASONING: Sebelum menentukan intent dan detailnya, kamu WAJIB menganalisis konteks di field "reasoning".
 2. JIKA PENGGUNA HANYA BERTANYA / NGOBROL / MENGKLARIFIKASI (contoh: "apakah 50rb wajar?", "hai", "itu transaksi minggu lalu?", "kok bensin masuknya ke situ?"), berikan "intent": "chat" dan isi "reply_text" (maks 2 kalimat). JANGAN gunakan intent "query" atau "insert" jika mereka hanya bertanya atau merespons bot.
 3. JIKA PENGGUNA MEMINTA MELIHAT/MENAMPILKAN TRANSAKSI (contoh: "tampilkan transaksi", "lihat pengeluaran"), berikan "intent": "query" dan isi field "query" dengan:
-   - date: WAJIB diisi sesuai permintaan:
+   - Jika satu tanggal atau kata kunci relatif, isi "date":
      * "today" → hari ini
      * "yesterday" → kemarin
      * "this_week" → minggu ini
      * "last_week" → minggu lalu
      * "this_month" → bulan ini
      * "YYYY-MM-DD" → tanggal spesifik
+   - Jika user menyebut RENTANG TANGGAL (contoh: "27-29 juni", "tanggal 5 sampai 10"), gunakan "date_from" dan "date_to" (format YYYY-MM-DD). JANGAN isi "date" jika sudah ada date_from/date_to.
    - Jika tidak menyebut waktu spesifik, gunakan "today".
 4. JIKA PENGGUNA MEMINTA MENCATAT pengeluaran/pemasukan:
    - Evaluasi apakah data cukup. Data minimal HANYA butuh "amount" (jumlah uang), "description" (keterangan), dan "wallet" (metode pembayaran/dompet).
@@ -77,6 +80,10 @@ Output: {"reasoning": "User catat makan kemarin dengan dompet ShopeePay.", "inte
 Query dengan tanggal:
 User: "tampilkan transaksi kemarin"
 Output: {"reasoning": "User ingin melihat transaksi kemarin.", "intent": "query", "query": {"date": "yesterday"}}
+
+Query dengan rentang tanggal:
+User: "tampilkan transaksi 27-29 juni"
+Output: {"reasoning": "User ingin melihat transaksi dari tanggal 27 hingga 29 Juni.", "intent": "query", "query": {"date_from": "${TODAY_WIB.slice(0,4)}-06-27", "date_to": "${TODAY_WIB.slice(0,4)}-06-29"}}
 
 Edit (hanya ID, belum ada detail):
 User: "edit f2b997"

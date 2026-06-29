@@ -69,10 +69,17 @@ bot.command("link", async (ctx) => {
   }
 
   const supabase = createServerClient();
+
+  // Cek apakah chat ID ini sudah terhubung ke akun FinMe lain
+  const { data: existingLinked } = await supabase
+    .from("users")
+    .select("id, email")
+    .eq("telegram_chat_id", chatId)
+    .maybeSingle();
   
   const { data: webUser, error: findError } = await supabase
     .from("users")
-    .select("id, telegram_sync_token_expires")
+    .select("id, email, telegram_sync_token_expires")
     .eq("telegram_sync_token", otp)
     .single();
 
@@ -86,10 +93,13 @@ bot.command("link", async (ctx) => {
     return;
   }
 
-  await supabase
-    .from("users")
-    .update({ telegram_chat_id: null })
-    .eq("telegram_chat_id", chatId);
+  // Jika chat ini sudah dipakai akun lain (bukan akun yang sedang di-link)
+  if (existingLinked && existingLinked.id !== webUser.id) {
+    await ctx.reply(
+      `⚠️ Akun Telegram ini sudah terhubung ke akun FinMe lain (${existingLinked.email}).\n\nGunakan akun Telegram yang berbeda untuk menghubungkan ke akun ini, atau hubungi support.`
+    );
+    return;
+  }
 
   const fullName = `${ctx.from?.first_name || ""} ${ctx.from?.last_name || ""}`.trim() || null;
 
@@ -108,8 +118,32 @@ bot.command("link", async (ctx) => {
     return;
   }
 
-  await ctx.reply("Berhasil! Akun Telegram Anda sekarang sudah terhubung dengan akun Web FinMe.");
+  await ctx.reply(`✅ Berhasil! Akun Telegram Anda sekarang sudah terhubung dengan akun FinMe:\n📧 ${webUser.email}`);
 });
+
+bot.command("status", async (ctx) => {
+  const chatId = ctx.chat.id.toString();
+  const supabase = createServerClient();
+
+  const { data: linkedUser } = await supabase
+    .from("users")
+    .select("email, full_name")
+    .eq("telegram_chat_id", chatId)
+    .maybeSingle();
+
+  if (!linkedUser) {
+    await ctx.reply(
+      "❌ Akun Telegram ini belum terhubung ke akun FinMe manapun.\n\nUntuk menghubungkan, buka FinMe Web → Pengaturan → salin kode OTP, lalu ketik:\n/link KODE-OTP"
+    );
+    return;
+  }
+
+  const name = linkedUser.full_name ? `👤 ${linkedUser.full_name}\n` : "";
+  await ctx.reply(
+    `✅ Akun Telegram ini terhubung ke FinMe:\n${name}📧 ${linkedUser.email}`
+  );
+});
+
 
 bot.command("start", async (ctx) => {
   const firstName = ctx.from?.first_name || "";
@@ -142,6 +176,7 @@ Ketik pengeluaran atau pemasukan secara natural:
 - lihat pengeluaran kemarin
 - transaksi minggu ini
 - transaksi bulan ini
+- tampilkan transaksi 27-29 juni
 
 ━━━━━━━━━━━━━━━━━━━━━
 ✏️ *EDIT TRANSAKSI*
@@ -166,6 +201,10 @@ Makanan, Transportasi, Hiburan, Langganan, Belanja, Kesehatan, Pendidikan, Pemas
 🔗 *HUBUNGKAN KE WEB*
 Buka FinMe Web, lalu Pengaturan, salin kode OTP
 Ketik: /link KODE-OTP
+
+📊 *CEK STATUS AKUN*
+Ketik: /status
+Menampilkan akun FinMe yang terhubung ke Telegram ini.
 
 ⚠️ Batas: *20 pesan AI per hari*
 
@@ -307,23 +346,37 @@ bot.on("message:text", async (ctx) => {
     } 
     else if (extracted.intent === "query") {
       // Filter berdasarkan kolom date
-      const dateRange = getDateRange(extracted.query?.date);
+      const { date, date_from, date_to } = extracted.query || {};
       
-      let q = supabase
-        .from("transactions")
-        .select("id, amount, description, type, category, date")
-        .eq("user_id", user.id)
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(10);
+      // Jika ada date_from/date_to, gunakan itu. Jika tidak, fallback ke getDateRange(date)
+      let fromDate: string | undefined;
+      let toDate: string | undefined;
+      let periodeLabel = "periode tersebut";
 
-      // Filter menggunakan kolom date (YYYY-MM-DD)
-      if (dateRange.from) q = q.gte("date", dateRange.from.slice(0, 10));
-      if (dateRange.to) q = q.lte("date", dateRange.to.slice(0, 10));
-
-      const { data: items } = await q;
-        
-      if (!items || items.length === 0) {
+      if (date_from || date_to) {
+        fromDate = date_from;
+        toDate = date_to;
+        // Buat label periode dari tanggal range
+        const fmt = (d?: string) => {
+          if (!d) return "";
+          return new Date(d + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        };
+        if (fromDate && toDate && fromDate !== toDate) {
+          // Cek apakah bulan/tahun sama
+          const fDate = new Date(fromDate + 'T00:00:00+07:00');
+          const tDate = new Date(toDate + 'T00:00:00+07:00');
+          if (fDate.getMonth() === tDate.getMonth() && fDate.getFullYear() === tDate.getFullYear()) {
+            periodeLabel = `${fDate.getDate()}–${tDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+          } else {
+            periodeLabel = `${fmt(fromDate)} – ${fmt(toDate)}`;
+          }
+        } else if (fromDate) {
+          periodeLabel = fmt(fromDate);
+        }
+      } else {
+        const dateRange = getDateRange(date);
+        fromDate = dateRange.from?.slice(0, 10);
+        toDate = dateRange.to?.slice(0, 10);
         const periodeMap: Record<string, string> = {
           today: "hari ini", hari_ini: "hari ini",
           yesterday: "kemarin", kemarin: "kemarin",
@@ -331,13 +384,43 @@ bot.on("message:text", async (ctx) => {
           last_week: "minggu lalu", minggu_lalu: "minggu lalu",
           this_month: "bulan ini", bulan_ini: "bulan ini",
         };
-        const periodeLabel = periodeMap[extracted.query?.date || ""] || "periode tersebut";
+        if (date && periodeMap[date]) {
+          periodeLabel = periodeMap[date];
+        } else if (fromDate) {
+          periodeLabel = new Date(fromDate + 'T00:00:00+07:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+      }
+      
+      let q = supabase
+        .from("transactions")
+        .select("id, amount, description, type, category, date, created_at")
+        .eq("user_id", user.id)
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      // Filter menggunakan kolom date (YYYY-MM-DD)
+      if (fromDate) q = q.gte("date", fromDate);
+      if (toDate) q = q.lte("date", toDate);
+
+      const { data: items } = await q;
+        
+      if (!items || items.length === 0) {
         botReply = `Belum ada transaksi untuk ${periodeLabel}.`;
       } else {
         const rp = (n: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
-        botReply = "Berikut transaksimu:\n" + items.map(t =>
-          `- [${t.id.substring(0,6)}] ${t.description || t.category} (${rp(t.amount)})`
-        ).join("\n");
+        const getTime = (created_at: string) => {
+          const d = new Date(created_at);
+          // Konversi ke WIB (UTC+7)
+          const wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+          const hh = wib.getUTCHours().toString().padStart(2, '0');
+          const mm = wib.getUTCMinutes().toString().padStart(2, '0');
+          return `${hh}:${mm}`;
+        };
+        botReply = `📋 Pengeluaran tanggal ${periodeLabel}\n` +
+          items.map(t =>
+            `- [${t.id.substring(0,6)}] ${t.description || t.category} (${rp(t.amount)}) • ${getTime(t.created_at)}`
+          ).join("\n");
       }
       await ctx.reply(botReply);
     } 
